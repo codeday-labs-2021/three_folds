@@ -1,6 +1,5 @@
 function main() {
     const canvas = document.getElementById("glCanvas");
-    console.log(canvas.width, canvas.height);
 
     // working with WebGL context will be for the most part unnecessary as Three.js handles it
     const scene = new THREE.Scene();
@@ -17,8 +16,11 @@ function main() {
 
     camera.position.setZ(30);
 
-    // init our plane shape
-    const geometry = new THREE.PlaneGeometry(20, 20);
+    // init our plane shape, make it same proportions as svg
+    let svgElement = document.querySelector("svg");
+    let svgAspect = svgElement.clientHeight / svgElement.clientWidth;
+    console.log(svgAspect);
+    const geometry = new THREE.PlaneGeometry(15, 15 * svgAspect);
 
     // load textures and set up materials here
     const frontMaterial = new THREE.MeshBasicMaterial({color: 0x80ff00, side: THREE.FrontSide});
