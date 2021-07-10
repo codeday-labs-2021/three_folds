@@ -1,11 +1,6 @@
-rect {
-    background-color: green;
-}
-
 .flex-parent {
     display: flex;
-}
-
+  }
 .flex-child {
     flex: 1;
 }
