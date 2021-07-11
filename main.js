@@ -19,7 +19,7 @@ function main() {
     // init our plane shape, make it same proportions as svg
     let svgElement = document.querySelector("svg");
     let svgAspect = svgElement.clientHeight / svgElement.clientWidth;
-    console.log(svgAspect);
+    // console.log(svgAspect);
     const geometry = new THREE.PlaneGeometry(15, 15 * svgAspect);
 
     // load textures and set up materials here
@@ -34,19 +34,61 @@ function main() {
 
     let rotationRadius = 30;
 
-    // by default the camera looks in the -Z or +Z directions, so this angle will start from Z axis
-    let rotationDegree = 0;
-    let rotationOffset = 1;
+    // rotation in XZ plane
+    let theta = 0;
+
+    // rotation in a plane along Y axis
+    let phi = Math.PI / 2;
+
+    let isCamRotating = false;
+    // const sensitivityScaleXY = 0.01;
+
+
+    canvas.addEventListener("mousedown", e => {
+        isCamRotating = true;
+    });
+
+    canvas.addEventListener("mouseup", e => {
+        e.preventDefault();
+        isCamRotating = false;
+    });
+
+    let restrictionRangeY = 0.05;
+    canvas.addEventListener("mousemove", e => {
+        if (isCamRotating) {
+            theta -= degToRad(e.movementX);
+            let n = phi - degToRad(e.movementY);
+            console.log(n)
+            if (n > Math.PI - restrictionRangeY) {
+                phi = Math.PI - restrictionRangeY;
+            } else if (n < restrictionRangeY) {
+                phi = restrictionRangeY;
+            } else {
+                phi = n;
+            }
+        }
+    });
+
+    canvas.addEventListener("wheel", e => {
+        e.preventDefault();
+        rotationRadius += e.deltaY;
+    });
+
     function animate() {
         requestAnimationFrame(animate);
 
-        rotationDegree += rotationOffset;
-        camera.position.x = rotationRadius * Math.sin(degToRad(rotationDegree));
-        camera.position.z = rotationRadius * Math.cos(degToRad(rotationDegree));
+        // rotationDegree += rotationOffset;
+        // camera.position.x = rotationRadius * Math.sin(degToRad(rotationDegree));
+        // camera.position.z = rotationRadius * Math.cos(degToRad(rotationDegree));
+        // calculate position from theta and phi
+        let sphCoords = new THREE.Spherical(rotationRadius, phi, theta);
+        camera.position.setFromSpherical(sphCoords);
+        // console.log(camera.position);
         camera.lookAt(0, 0, 0);
 
         renderer.render(scene, camera);
-      }
+    }
+
 
     function degToRad(degrees) {
         return degrees * (Math.PI / 180);
