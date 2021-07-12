@@ -41,15 +41,25 @@ function main() {
     let phi = Math.PI / 2;
 
     let isCamRotating = false;
+    let zoomLimit = 10;
     // const sensitivityScaleXY = 0.01;
 
+    // prevent right clicks from opening the context menu anywhere
+    document.addEventListener("contextmenu", e => {
+        // if (isCamRotating) {
+            e.preventDefault();
+        // }
+    });
 
     canvas.addEventListener("mousedown", e => {
+        canvas.requestPointerLock();
         isCamRotating = true;
     });
 
     canvas.addEventListener("mouseup", e => {
+        document.exitPointerLock();
         e.preventDefault();
+        // console.log("MouseUP event fired");
         isCamRotating = false;
     });
 
@@ -58,7 +68,7 @@ function main() {
         if (isCamRotating) {
             theta -= degToRad(e.movementX);
             let n = phi - degToRad(e.movementY);
-            console.log(n)
+            // console.log(n)
             if (n > Math.PI - restrictionRangeY) {
                 phi = Math.PI - restrictionRangeY;
             } else if (n < restrictionRangeY) {
@@ -71,7 +81,12 @@ function main() {
 
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
-        rotationRadius += e.deltaY;
+        let newZoom = rotationRadius + e.deltaY * 0.1;
+        if (newZoom < zoomLimit) {
+            rotationRadius = zoomLimit;
+        } else {
+            rotationRadius = newZoom;
+        }
     });
 
     function animate() {
