@@ -57,10 +57,10 @@ function main() {
     });
 
     canvas.addEventListener("mouseup", e => {
-        document.exitPointerLock();
         e.preventDefault();
         // console.log("MouseUP event fired");
         isCamRotating = false;
+        document.exitPointerLock();
     });
 
     let restrictionRangeY = 0.05;
