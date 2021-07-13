@@ -52,7 +52,6 @@ function main() {
     });
 
     canvas.addEventListener("mousedown", e => {
-        canvas.requestPointerLock();
         isCamRotating = true;
     });
 
