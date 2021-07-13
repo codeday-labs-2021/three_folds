@@ -51,10 +51,12 @@ function main() {
         // }
     });
 
+    // when clicking into the canvas, start rotating
     canvas.addEventListener("mousedown", e => {
         isCamRotating = true;
     });
 
+    // listen for mouse release on the whole page to prevent accidental sticky rotate
     document.addEventListener("mouseup", e => {
         // e.preventDefault();
         // console.log("MouseUP event fired");
@@ -64,6 +66,8 @@ function main() {
     });
 
     let restrictionRangeY = 0.05;
+
+    // orbit the camera upon mouse movement in the canvas
     canvas.addEventListener("mousemove", e => {
         if (isCamRotating) {
             theta -= degToRad(e.movementX);
@@ -79,6 +83,7 @@ function main() {
         }
     });
 
+    // use scroll wheel to zoom
     canvas.addEventListener("wheel", e => {
         e.preventDefault();
         let newZoom = rotationRadius + e.deltaY * 0.1;
@@ -99,6 +104,7 @@ function main() {
         let sphCoords = new THREE.Spherical(rotationRadius, phi, theta);
         camera.position.setFromSpherical(sphCoords);
         // console.log(camera.position);
+        // console.log(isCamRotating);
         camera.lookAt(0, 0, 0);
 
         renderer.render(scene, camera);
