@@ -55,11 +55,12 @@ function main() {
         isCamRotating = true;
     });
 
-    canvas.addEventListener("mouseup", e => {
-        e.preventDefault();
+    document.addEventListener("mouseup", e => {
+        // e.preventDefault();
         // console.log("MouseUP event fired");
-        isCamRotating = false;
-        document.exitPointerLock();
+        if (isCamRotating) {
+            isCamRotating = false;
+        }
     });
 
     let restrictionRangeY = 0.05;
