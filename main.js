@@ -19,7 +19,6 @@ function main() {
     // init our plane shape, make it same proportions as svg
     let svgElement = document.querySelector("svg");
     let svgAspect = svgElement.clientHeight / svgElement.clientWidth;
-    // console.log(svgAspect);
     const geometry = new THREE.PlaneGeometry(15, 15 * svgAspect);
 
     // load textures and set up materials here
@@ -58,8 +57,6 @@ function main() {
 
     // listen for mouse release on the whole page to prevent accidental sticky rotate
     document.addEventListener("mouseup", e => {
-        // e.preventDefault();
-        // console.log("MouseUP event fired");
         if (isCamRotating) {
             isCamRotating = false;
         }
@@ -72,7 +69,6 @@ function main() {
         if (isCamRotating) {
             theta -= degToRad(e.movementX);
             let n = phi - degToRad(e.movementY);
-            // console.log(n)
             if (n > Math.PI - restrictionRangeY) {
                 phi = Math.PI - restrictionRangeY;
             } else if (n < restrictionRangeY) {
@@ -97,14 +93,8 @@ function main() {
     function animate() {
         requestAnimationFrame(animate);
 
-        // rotationDegree += rotationOffset;
-        // camera.position.x = rotationRadius * Math.sin(degToRad(rotationDegree));
-        // camera.position.z = rotationRadius * Math.cos(degToRad(rotationDegree));
-        // calculate position from theta and phi
         let sphCoords = new THREE.Spherical(rotationRadius, phi, theta);
         camera.position.setFromSpherical(sphCoords);
-        // console.log(camera.position);
-        // console.log(isCamRotating);
         camera.lookAt(0, 0, 0);
 
         renderer.render(scene, camera);
