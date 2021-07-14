@@ -45,9 +45,7 @@ function main() {
 
     // prevent right clicks from opening the context menu anywhere
     document.addEventListener("contextmenu", e => {
-        // if (isCamRotating) {
-            e.preventDefault();
-        // }
+        e.preventDefault();
     });
 
     // when clicking into the canvas, start rotating
