@@ -108,6 +108,7 @@ async function main() {
 
     let isCamRotating = false;
     let zoomLimit = 2;
+    let zoomMax = 30;
     // const sensitivityScaleXY = 0.01;
 
     // prevent right clicks from opening the context menu anywhere
@@ -150,6 +151,8 @@ async function main() {
         let newZoom = rotationRadius + e.deltaY * 0.1;
         if (newZoom < zoomLimit) {
             rotationRadius = zoomLimit;
+        } else if (newZoom > zoomMax) {
+            rotationRadius = zoomMax;
         } else {
             rotationRadius = newZoom;
         }
