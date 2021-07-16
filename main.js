@@ -332,9 +332,11 @@ async function main() {
     let phi = Math.PI / 2;
 
     let isCamRotating = false;
+    let isCamPanning = false;
     let zoomLimit = 2;
     let zoomMax = 30;
-    // const sensitivityScaleXY = 0.01;
+    let origin = new THREE.Vector3(0, 0, 0); // the origin that the cam orbits around
+    const sensitivityScale = 0.01;
 
     // prevent right clicks from opening the context menu anywhere
     document.addEventListener("contextmenu", e => {
@@ -343,13 +345,19 @@ async function main() {
 
     // when clicking into the canvas, start rotating
     canvas.addEventListener("mousedown", e => {
-        isCamRotating = true;
+        if (e.button === 0) {
+            isCamRotating = true;
+        } else if (e.button === 2) {
+            console.log("RMB");
+            isCamPanning = true;
+        }
     });
 
     // listen for mouse release on the whole page to prevent accidental sticky rotate
     document.addEventListener("mouseup", e => {
-        if (isCamRotating) {
+        if (isCamRotating || isCamPanning) {
             isCamRotating = false;
+            isCamPanning = false;
         }
     });
 
@@ -367,6 +375,9 @@ async function main() {
             } else {
                 phi = n;
             }
+        } else if (isCamPanning) { // prevent both pan and rotate at same time
+            origin.setComponent(0, origin.x - (e.movementX * sensitivityScale)); // x axis movement
+            origin.setComponent(2, origin.z - (e.movementY * sensitivityScale));
         }
     });
 
@@ -388,7 +399,9 @@ async function main() {
 
         let sphCoords = new THREE.Spherical(rotationRadius, phi, theta);
         camera.position.setFromSpherical(sphCoords);
-        camera.lookAt(0, 0, 0);
+        // offset spherical position to new origin as well
+        camera.position.addVectors(camera.position, origin);
+        camera.lookAt(origin);
 
         renderer.render(scene, camera);
     }
