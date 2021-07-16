@@ -3,51 +3,273 @@ async function main() {
     // frick CORS
     const fold = {
         "file_spec": 1,
-        "file_creator": "A text editor",
-        "file_author": "Jason Ku",
+        "file_creator": "Mathematica",
+        "file_author": "Thomas Hull",
         "file_classes": ["singleModel"],
-        "frame_title": "Three-fold 3D example",
+        "frame_title": "Rigidly folded square twist",
         "frame_classes": ["foldedForm"],
         "frame_attributes": ["3D"],
         "vertices_coords": [
-          [0,1,0],
-          [0,0,1],
-          [0,-1,0],
-          [1,0,0],
-          [0,0,-1],
-          [0,0,-1]
+            [
+                0,
+                0,
+                0
+            ],
+            [
+                0.25,
+                0,
+                0
+            ],
+            [
+                0.25,
+                0.5,
+                0
+            ],
+            [
+                0,
+                0.5,
+                0
+            ],
+            [
+                0.466968,
+                0,
+                -0.124197
+            ],
+            [
+                0.966968,
+                0,
+                -0.124197
+            ],
+            [
+                0.966968,
+                0.25,
+                -0.124197
+            ],
+            [
+                0.466968,
+                0.25,
+                -0.124197
+            ],
+            [
+                0.716968,
+                0.354037,
+                0.103128
+            ],
+            [
+                0.966968,
+                0.354037,
+                0.103128
+            ],
+            [
+                0.966968,
+                0.854037,
+                0.103128
+            ],
+            [
+                0.716968,
+                0.854037,
+                0.103128
+            ],
+            [
+                0,
+                0.854037,
+                0.227324
+            ],
+            [
+                0,
+                0.604037,
+                0.227324
+            ],
+            [
+                0.5,
+                0.604037,
+                0.227324
+            ],
+            [
+                0.5,
+                0.854037,
+                0.227324
+            ]
         ],
         "faces_vertices": [
-          [0,1,2],
-          [0,2,3],
-          [0,4,1],
-          [1,5,2]
+            [
+                0,
+                1,
+                2,
+                3
+            ],
+            [
+                1,
+                4,
+                7,
+                2
+            ],
+            [
+                4,
+                5,
+                6,
+                7
+            ],
+            [
+                7,
+                6,
+                9,
+                8
+            ],
+            [
+                8,
+                9,
+                10,
+                11
+            ],
+            [
+                15,
+                14,
+                8,
+                11
+            ],
+            [
+                12,
+                13,
+                14,
+                15
+            ],
+            [
+                3,
+                2,
+                14,
+                13
+            ],
+            [
+                2,
+                7,
+                8,
+                14
+            ]
         ],
         "edges_vertices": [
-          [0,2],
-          [0,1],
-          [1,2],
-          [2,3],
-          [0,3],
-          [1,4],
-          [1,5],
-          [0,4],
-          [2,5]
+            [
+                0,
+                1
+            ],
+            [
+                1,
+                2
+            ],
+            [
+                2,
+                3
+            ],
+            [
+                3,
+                0
+            ],
+            [
+                4,
+                5
+            ],
+            [
+                5,
+                6
+            ],
+            [
+                6,
+                7
+            ],
+            [
+                7,
+                4
+            ],
+            [
+                8,
+                9
+            ],
+            [
+                9,
+                10
+            ],
+            [
+                10,
+                11
+            ],
+            [
+                11,
+                8
+            ],
+            [
+                12,
+                13
+            ],
+            [
+                13,
+                14
+            ],
+            [
+                14,
+                15
+            ],
+            [
+                15,
+                12
+            ],
+            [
+                2,
+                7
+            ],
+            [
+                7,
+                8
+            ],
+            [
+                8,
+                14
+            ],
+            [
+                14,
+                2
+            ],
+            [
+                3,
+                13
+            ],
+            [
+                1,
+                4
+            ],
+            [
+                6,
+                9
+            ],
+            [
+                11,
+                15
+            ]
         ],
         "edges_assignment": [
-          "V",
-          "M",
-          "M",
-          "B",
-          "B",
-          "B",
-          "B",
-          "B",
-          "B"
-        ],
-        "faceOrders": [
-          [2,0,-1],
-          [3,0,-1]
+            "B",
+            "M",
+            "V",
+            "B",
+            "B",
+            "B",
+            "V",
+            "V",
+            "M",
+            "B",
+            "B",
+            "V",
+            "B",
+            "M",
+            "M",
+            "B",
+            "V",
+            "M",
+            "M",
+            "V",
+            "B",
+            "B",
+            "B",
+            "B"
         ]
     };
 
@@ -84,11 +306,14 @@ async function main() {
     // scene.add(plane);
     let triangleGeometry = new THREE.BufferGeometry();
     // triangleGeometry.vertices = [new THREE.Vector3(2, 1, 0), new THREE.Vector3(1, 3, 0), new THREE.Vector3(3, 4, 0)];
-    // console.log("TEST:", deepArrayConcat([], [1, 2, 2]));
+    // concatenating an empty array is a bit of a hack
     let cArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
     const vertices = new Float32Array(cArray);
-    console.log(cArray);
-    triangleGeometry.setIndex(deepArrayConcat(new Array(), fold["faces_vertices"]));
+    let faces = fold["faces_vertices"];
+    if (faces.some(el => el.length > 3)) {
+        faces = polygonToTri(faces);
+    }
+    triangleGeometry.setIndex(deepArrayConcat(new Array(), faces));
     triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
     // triangleGeometry.faces = [new THREE.Face3(0, 1, 2)];
     let plane = new THREE.Mesh(triangleGeometry, new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
@@ -177,11 +402,10 @@ async function main() {
      * Helper function to cancatenate two arrays even if they have nested arrays inside
      * @param {Array} array1 The array to be concatenated to
      * @param {Array} array2 The array to concatenate onto array1
+     * @returns {Array} The result of deep concatenation
      */
     function deepArrayConcat(array1, array2) {
-        console.log(array1, array2);
         if (array2.some(el => Array.isArray(el))) {
-            console.log("Deep concat needed");
             array2.forEach(element => {
                 if (Array.isArray(element)) {
                     array1 = deepArrayConcat(array1, element);
@@ -189,14 +413,42 @@ async function main() {
                     array1 = array1.concat(element);
                 }
             });
-            console.log("M1:", array1);
             return array1;
         } else {
-            console.log("No deep concat");
             array1 = array1.concat(array2);
-            console.log(array1);
             return array1;
         }
+    }
+
+    /**
+     * Function to split polygonal faces into triangles for rendering
+     * @param {Array} array A list of faces made by referencing indexed vertices
+     * @returns {Array} The original array modified to have many triangles instead of polygons
+     */
+    function polygonToTri(array) {
+        let outArray = [];
+        for (let i = 0; i < array.length; i++) {
+            let len = array[i].length;
+            if (len === 3) {
+                outArray.push(array[i]);
+            } else if (len === 4) { // unsure about higher polygons so only handle rect
+                // get the last three elements, then get the first three elements
+                outArray.push(array[i].slice(0, 3));
+                /*
+                 * since the face has its vertices listed in a consistent counterclockwise or
+                 * clockwise order, we don't need the first three then last three, we need
+                 * the first three, then the triangle opposite that is formed by the last two
+                 * vertices andt the first one
+                 * this hack does that by moving the first element to the last to slice the same
+                 */
+                let shifted = array[i];
+                shifted.push(array[i].shift())
+                outArray.push(shifted.slice(-3));
+            } else if (len < 3 || len > 4) {
+                alert("Polygon rendering encountered unexpected shapes");
+            }
+        }
+        return outArray;
     }
 
     // make some spheres to show the camera is orbiting, not just plane rotating
