@@ -19,7 +19,6 @@ function main() {
     // init our plane shape, make it same proportions as svg
     let svgElement = document.querySelector("svg");
     let svgAspect = svgElement.clientHeight / svgElement.clientWidth;
-    console.log(svgAspect);
     const geometry = new THREE.PlaneGeometry(15, 15 * svgAspect);
 
     // load textures and set up materials here
@@ -34,19 +33,71 @@ function main() {
 
     let rotationRadius = 30;
 
-    // by default the camera looks in the -Z or +Z directions, so this angle will start from Z axis
-    let rotationDegree = 0;
-    let rotationOffset = 1;
+    // rotation in XZ plane
+    let theta = 0;
+
+    // rotation in a plane along Y axis
+    let phi = Math.PI / 2;
+
+    let isCamRotating = false;
+    let zoomLimit = 10;
+    // const sensitivityScaleXY = 0.01;
+
+    // prevent right clicks from opening the context menu anywhere
+    document.addEventListener("contextmenu", e => {
+        e.preventDefault();
+    });
+
+    // when clicking into the canvas, start rotating
+    canvas.addEventListener("mousedown", e => {
+        isCamRotating = true;
+    });
+
+    // listen for mouse release on the whole page to prevent accidental sticky rotate
+    document.addEventListener("mouseup", e => {
+        if (isCamRotating) {
+            isCamRotating = false;
+        }
+    });
+
+    let restrictionRangeY = 0.05;
+
+    // orbit the camera upon mouse movement in the canvas
+    canvas.addEventListener("mousemove", e => {
+        if (isCamRotating) {
+            theta -= degToRad(e.movementX);
+            let n = phi - degToRad(e.movementY);
+            if (n > Math.PI - restrictionRangeY) {
+                phi = Math.PI - restrictionRangeY;
+            } else if (n < restrictionRangeY) {
+                phi = restrictionRangeY;
+            } else {
+                phi = n;
+            }
+        }
+    });
+
+    // use scroll wheel to zoom
+    canvas.addEventListener("wheel", e => {
+        e.preventDefault();
+        let newZoom = rotationRadius + e.deltaY * 0.1;
+        if (newZoom < zoomLimit) {
+            rotationRadius = zoomLimit;
+        } else {
+            rotationRadius = newZoom;
+        }
+    });
+
     function animate() {
         requestAnimationFrame(animate);
 
-        rotationDegree += rotationOffset;
-        camera.position.x = rotationRadius * Math.sin(degToRad(rotationDegree));
-        camera.position.z = rotationRadius * Math.cos(degToRad(rotationDegree));
+        let sphCoords = new THREE.Spherical(rotationRadius, phi, theta);
+        camera.position.setFromSpherical(sphCoords);
         camera.lookAt(0, 0, 0);
 
         renderer.render(scene, camera);
-      }
+    }
+
 
     function degToRad(degrees) {
         return degrees * (Math.PI / 180);
