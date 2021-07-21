@@ -1,4 +1,4 @@
-async function main() {
+function main() {
 
     // frick CORS
     const fold = {
@@ -290,22 +290,8 @@ async function main() {
 
     camera.position.setZ(30);
 
-    // init our plane shape, make it same proportions as svg
-    // let svgElement = document.querySelector("svg");
-    // let svgAspect = svgElement.clientHeight / svgElement.clientWidth;
-    // const geometry = new THREE.PlaneGeometry(15, 15 * svgAspect);
-
-    // // load textures and set up materials here
-    // const frontMaterial = new THREE.MeshBasicMaterial({color: 0x80ff00, side: THREE.FrontSide});
-    // const backMaterial = new THREE.MeshBasicMaterial({color: 0xffffff, side: THREE.BackSide});
-    // const plane = new THREE.Group();
-
-    // plane.add(new THREE.Mesh(geometry, frontMaterial));
-    // plane.add(new THREE.Mesh(geometry, backMaterial));
-
-    // scene.add(plane);
     let triangleGeometry = new THREE.BufferGeometry();
-    // triangleGeometry.vertices = [new THREE.Vector3(2, 1, 0), new THREE.Vector3(1, 3, 0), new THREE.Vector3(3, 4, 0)];
+
     // concatenating an empty array is a bit of a hack
     let cArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
     const vertices = new Float32Array(cArray);
@@ -315,7 +301,7 @@ async function main() {
     }
     triangleGeometry.setIndex(deepArrayConcat(new Array(), faces));
     triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-    // triangleGeometry.faces = [new THREE.Face3(0, 1, 2)];
+
     let plane = new THREE.Mesh(triangleGeometry, new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
     scene.add(plane);
 
@@ -363,7 +349,7 @@ async function main() {
 
     let restrictionRangeY = 0.05;
 
-    // orbit the camera upon mouse movement in the canvas
+    // orbit the camera upon mouse movement in the canvas, pan if right clicked
     canvas.addEventListener("mousemove", e => {
         if (isCamRotating) {
             theta -= degToRad(e.movementX);
@@ -458,25 +444,12 @@ async function main() {
                 shifted.push(array[i].shift())
                 outArray.push(shifted.slice(-3));
             } else if (len < 3 || len > 4) {
+                // TODO: replace with better alert when frontend is more permanent
                 alert("Polygon rendering encountered unexpected shapes");
             }
         }
         return outArray;
     }
-
-    // make some spheres to show the camera is orbiting, not just plane rotating
-    function createSphere() {
-        const geometry = new THREE.SphereGeometry(3);
-        const material = new THREE.MeshBasicMaterial({color: 0xffffff});
-        const sph = new THREE.Mesh(geometry, material);
-
-        // using three math utils to randomize numbers
-        const [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(250));
-        sph.position.set(x, y, z);
-        scene.add(sph);
-    }
-
-    Array(50).fill().forEach(() => createSphere());
 
     animate();
 
