@@ -311,8 +311,10 @@ function main() {
     let isCamPanning = false;
     let zoomLimit = 2;
     let zoomMax = 30;
-    let origin = new THREE.Vector3(0, 0, 0); // the origin that the cam orbits around
     const sensitivityScale = 0.01;
+
+    shape.geometry.computeBoundingSphere();
+    let origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
 
     // prevent right clicks from opening the context menu anywhere
     document.addEventListener("contextmenu", e => {
