@@ -295,9 +295,9 @@ function main() {
 
     scene.add(shape);
 
-    // const edges = new THREE.EdgesGeometry(shape);
-    // const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
-    // scene.add(lines);
+    const edges = new THREE.EdgesGeometry(shape.geometry);
+    const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+    scene.add(lines);
 
     let rotationRadius = 30;
 
@@ -386,8 +386,9 @@ function main() {
         let triangleGeometry = new THREE.BufferGeometry();
 
         // concatenating an empty array is a bit of a hack
-        let cArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
-        const vertices = new Float32Array(cArray);
+        let vertsArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
+        vertsArray = mathCoordConversion(vertsArray);
+        const vertices = new Float32Array(vertsArray);
         let faces = fold["faces_vertices"];
 
         // check if there are any faces of more than three vertices
@@ -456,6 +457,27 @@ function main() {
             } else if (len < 3 || len > 4) {
                 // TODO: replace with better alert when frontend is more permanent
                 alert("Polygon rendering encountered unexpected shapes");
+            }
+        }
+        return outArray;
+    }
+
+    /**
+     * Helper function to convert from XYZ (FOLD) to XZY (THREE.js) and possibly back as well. Used
+     * on arrays of values every 3 representing one point, like after calling deepArrayConcat() on
+     * the vertices from FOLD
+     * @param {Array} coordsArray An array of coordinates where every 3 values is one point
+     * @returns A converted array where the second and third values of each coord are swapped
+     */
+    function mathCoordConversion(coordsArray) {
+        let outArray = [];
+        for (let i = 0; i < coordsArray.length; i++) {
+            let specialIndex = (i + 1) % 3;
+            if (!(specialIndex === 2)) {
+                outArray.push(coordsArray[i]);
+            }
+            if (specialIndex === 0) {
+                outArray.push(coordsArray[i - 1]);
             }
         }
         return outArray;
