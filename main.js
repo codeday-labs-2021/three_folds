@@ -290,24 +290,14 @@ function main() {
 
     camera.position.setZ(30);
 
-    let triangleGeometry = new THREE.BufferGeometry();
+    // let triangleGeometry = new THREE.BufferGeometry();
+    let shape = createFaceGeom();
 
-    // concatenating an empty array is a bit of a hack
-    let cArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
-    const vertices = new Float32Array(cArray);
-    let faces = fold["faces_vertices"];
-    if (faces.some(el => el.length > 3)) {
-        faces = polygonToTri(faces);
-    }
-    triangleGeometry.setIndex(deepArrayConcat(new Array(), faces));
-    triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+    scene.add(shape);
 
-    let plane = new THREE.Mesh(triangleGeometry, new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
-    scene.add(plane);
-
-    const edges = new THREE.EdgesGeometry(triangleGeometry);
-    const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
-    scene.add(lines);
+    // const edges = new THREE.EdgesGeometry(shape);
+    // const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+    // scene.add(lines);
 
     let rotationRadius = 30;
 
@@ -385,11 +375,32 @@ function main() {
 
         let sphCoords = new THREE.Spherical(rotationRadius, phi, theta);
         camera.position.setFromSpherical(sphCoords);
-        // offset spherical position to new origin as well
+
+        // offset spherical position to new origin as well for panning
         camera.position.addVectors(camera.position, origin);
         camera.lookAt(origin);
 
         renderer.render(scene, camera);
+    }
+
+    function createFaceGeom() {
+        let triangleGeometry = new THREE.BufferGeometry();
+
+        // concatenating an empty array is a bit of a hack
+        let cArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
+        const vertices = new Float32Array(cArray);
+        let faces = fold["faces_vertices"];
+
+        // check if there are any faces of more than three vertices
+        if (faces.some(el => el.length > 3)) {
+            faces = polygonToTri(faces);
+        }
+        triangleGeometry.setIndex(deepArrayConcat(new Array(), faces));
+        triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+
+        let plane = new THREE.Mesh(triangleGeometry,
+            new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
+        return plane;
     }
 
 
@@ -420,7 +431,7 @@ function main() {
     }
 
     /**
-     * Function to split polygonal faces into triangles for rendering
+     * Function to split an array of indexed vertices as faces into triangles if they aren't already
      * @param {Array} array A list of faces made by referencing indexed vertices
      * @returns {Array} The original array modified to have many triangles instead of polygons
      */
@@ -437,8 +448,8 @@ function main() {
                  * since the face has its vertices listed in a consistent counterclockwise or
                  * clockwise order, we don't need the first three then last three, we need
                  * the first three, then the triangle opposite that is formed by the last two
-                 * vertices andt the first one
-                 * this hack does that by moving the first element to the last to slice the same
+                 * vertices and the first one
+                 * this does that by moving the first element
                  */
                 let shifted = array[i];
                 shifted.push(array[i].shift())
