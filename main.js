@@ -324,7 +324,6 @@ function main() {
         if (e.button === 0) {
             isCamRotating = true;
         } else if (e.button === 2) {
-            console.log("RMB");
             isCamPanning = true;
         }
     });
