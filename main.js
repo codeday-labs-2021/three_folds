@@ -9,36 +9,10 @@ function main() {
 
 function render(file) {
 
-    let fReader = new FileReader();
-    let fold = JSON.parse(fReader.readAsText(file));
+    let canvas, scene, camera, renderer;
 
-    // init THREE.js rendering stuff
-    const canvas = document.getElementById("glCanvas");
-
-    // working with WebGL context will be for the most part unnecessary as Three.js handles it
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(80, canvas.width / canvas.height, 0.1, 1000);
-
-    // pass in canvas DOM element for Three to draw to
-    const renderer = new THREE.WebGLRenderer({
-        canvas: canvas
-    });
-
-    // set up cam size
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(canvas.width, canvas.height);
-
-    camera.position.setZ(30);
-
-    // let triangleGeometry = new THREE.BufferGeometry();
-    let shape = createFaceGeom();
-
-    scene.add(shape);
-
-    const edges = new THREE.EdgesGeometry(shape.geometry);
-    const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
-    scene.add(lines);
-
+    // the fold object that gets passed in
+    let fold;
     let rotationRadius = 30;
 
     // rotation in XZ plane
@@ -52,9 +26,54 @@ function render(file) {
     let zoomLimit = 2;
     let zoomMax = 30;
     const sensitivityScale = 0.01;
+    let origin = new THREE.Vector3(0, 0, 0);
 
-    shape.geometry.computeBoundingSphere();
-    let origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
+    initRenderer();
+
+    let fReader = new FileReader();
+    fReader.addEventListener("load", event => {
+        let text = fReader.result;
+        fold = JSON.parse(text);
+        loadShape();
+    });
+    fReader.readAsText(file);
+
+    // shape.geometry.computeBoundingSphere();
+    // let origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
+
+
+    // init THREE.js rendering stuff
+    function initRenderer() {
+        canvas = document.getElementById("glCanvas");
+
+        // working with WebGL context will be for the most part unnecessary as Three.js handles it
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(80, canvas.width / canvas.height, 0.1, 1000);
+
+        // pass in canvas DOM element for Three to draw to
+        renderer = new THREE.WebGLRenderer({
+            canvas: canvas
+        });
+
+        // set up cam size
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(canvas.width, canvas.height);
+
+        camera.position.setZ(30);
+    }
+
+    function loadShape() {
+        let shape = createFaceGeom();
+
+        scene.add(shape);
+
+        const edges = new THREE.EdgesGeometry(shape.geometry);
+        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+        scene.add(lines);
+
+        shape.geometry.computeBoundingSphere();
+        origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
+    }
 
     // prevent right clicks from opening the context menu anywhere
     document.addEventListener("contextmenu", e => {
