@@ -73,7 +73,10 @@ function render(file) {
         } else {
             for (let i = 0; i < fold["file_frames"].length; i++) {
                 let frame = fold["file_frames"][i];
-                shapes.push(createFaceGeom(frame["vertices_coords"], frame["faces_vertices"]));
+                let createdGeom = createFaceGeom(frame["vertices_coords"], frame["faces_vertices"]);
+                if (createdGeom) {
+                    shapes.push(createdGeom);
+                }
             }
         }
 
@@ -162,7 +165,11 @@ function render(file) {
         if (vertex_coords && faces_vertices) {
             let triangleGeometry = new THREE.BufferGeometry();
 
-            // concatenating an empty array is a bit of a hack
+            if (vertex_coords.some(el => el.length !== 3)) {
+                vertex_coords = enforce3DCoordinates(vertex_coords);
+            }
+
+            // concatenating an empty array is a bit of a hack, bascially just squish the array
             let vertsArray = deepArrayConcat(new Array(), vertex_coords);
             vertsArray = mathCoordConversion(vertsArray);
             const vertices = new Float32Array(vertsArray);
@@ -179,12 +186,38 @@ function render(file) {
             return plane;
         } else {
             alert("A shape was missing necessary information to be rendered");
+            return null;
         }
     }
 
 
     function degToRad(degrees) {
         return degrees * (Math.PI / 180);
+    }
+
+    /**
+     * Given an array of arrays representing points, pads 'points' that do not have three values
+     * with zeroes on the end, removes the last element of 'points' that have four elements. Does
+     * not handle 'points' with n < 2 or n > 4 elements. This is necessary because FOLD objects
+     * sometimes do not store the third value in the point, and assume it to be zero.
+     * @param {Array} pointList A list of Arrays, representing points in 3D space
+     * @returns {Array} The same list but with every point modified to be in 3D
+     */
+    function enforce3DCoordinates(pointList) {
+        let outArray = [];
+        for (let i = 0; i < pointList.length; i++) {
+            let point = pointList[i];
+            if (point.length === 2) {
+                outArray = outArray.concat(point);
+                outArray.push(0);
+            } else if (point.length === 4) {
+                point.pop();
+                outArray = outArray.concat(point);
+            } else {
+                outArray = outArray.concat(point);
+            }
+        }
+        return outArray;
     }
 
     /**
