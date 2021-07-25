@@ -1,304 +1,18 @@
 function main() {
 
-    // frick CORS
-    const fold = {
-        "file_spec": 1,
-        "file_creator": "Mathematica",
-        "file_author": "Thomas Hull",
-        "file_classes": ["singleModel"],
-        "frame_title": "Rigidly folded square twist",
-        "frame_classes": ["foldedForm"],
-        "frame_attributes": ["3D"],
-        "vertices_coords": [
-            [
-                0,
-                0,
-                0
-            ],
-            [
-                0.25,
-                0,
-                0
-            ],
-            [
-                0.25,
-                0.5,
-                0
-            ],
-            [
-                0,
-                0.5,
-                0
-            ],
-            [
-                0.466968,
-                0,
-                -0.124197
-            ],
-            [
-                0.966968,
-                0,
-                -0.124197
-            ],
-            [
-                0.966968,
-                0.25,
-                -0.124197
-            ],
-            [
-                0.466968,
-                0.25,
-                -0.124197
-            ],
-            [
-                0.716968,
-                0.354037,
-                0.103128
-            ],
-            [
-                0.966968,
-                0.354037,
-                0.103128
-            ],
-            [
-                0.966968,
-                0.854037,
-                0.103128
-            ],
-            [
-                0.716968,
-                0.854037,
-                0.103128
-            ],
-            [
-                0,
-                0.854037,
-                0.227324
-            ],
-            [
-                0,
-                0.604037,
-                0.227324
-            ],
-            [
-                0.5,
-                0.604037,
-                0.227324
-            ],
-            [
-                0.5,
-                0.854037,
-                0.227324
-            ]
-        ],
-        "faces_vertices": [
-            [
-                0,
-                1,
-                2,
-                3
-            ],
-            [
-                1,
-                4,
-                7,
-                2
-            ],
-            [
-                4,
-                5,
-                6,
-                7
-            ],
-            [
-                7,
-                6,
-                9,
-                8
-            ],
-            [
-                8,
-                9,
-                10,
-                11
-            ],
-            [
-                15,
-                14,
-                8,
-                11
-            ],
-            [
-                12,
-                13,
-                14,
-                15
-            ],
-            [
-                3,
-                2,
-                14,
-                13
-            ],
-            [
-                2,
-                7,
-                8,
-                14
-            ]
-        ],
-        "edges_vertices": [
-            [
-                0,
-                1
-            ],
-            [
-                1,
-                2
-            ],
-            [
-                2,
-                3
-            ],
-            [
-                3,
-                0
-            ],
-            [
-                4,
-                5
-            ],
-            [
-                5,
-                6
-            ],
-            [
-                6,
-                7
-            ],
-            [
-                7,
-                4
-            ],
-            [
-                8,
-                9
-            ],
-            [
-                9,
-                10
-            ],
-            [
-                10,
-                11
-            ],
-            [
-                11,
-                8
-            ],
-            [
-                12,
-                13
-            ],
-            [
-                13,
-                14
-            ],
-            [
-                14,
-                15
-            ],
-            [
-                15,
-                12
-            ],
-            [
-                2,
-                7
-            ],
-            [
-                7,
-                8
-            ],
-            [
-                8,
-                14
-            ],
-            [
-                14,
-                2
-            ],
-            [
-                3,
-                13
-            ],
-            [
-                1,
-                4
-            ],
-            [
-                6,
-                9
-            ],
-            [
-                11,
-                15
-            ]
-        ],
-        "edges_assignment": [
-            "B",
-            "M",
-            "V",
-            "B",
-            "B",
-            "B",
-            "V",
-            "V",
-            "M",
-            "B",
-            "B",
-            "V",
-            "B",
-            "M",
-            "M",
-            "B",
-            "V",
-            "M",
-            "M",
-            "V",
-            "B",
-            "B",
-            "B",
-            "B"
-        ]
-    };
+    let fileInput = document.getElementById("fold-input");
+    fileInput.addEventListener("change", event => {
+        const fileList = event.target.files;
+        render(fileList[0]);
+    })
+}
 
-    const canvas = document.getElementById("glCanvas");
+function render(file) {
 
-    // working with WebGL context will be for the most part unnecessary as Three.js handles it
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(80, canvas.width / canvas.height, 0.1, 1000);
+    let canvas, scene, camera, renderer;
 
-    // pass in canvas DOM element for Three to draw to
-    const renderer = new THREE.WebGLRenderer({
-        canvas: canvas
-    });
-
-    // set up cam size
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(canvas.width, canvas.height);
-
-    camera.position.setZ(30);
-
-    // let triangleGeometry = new THREE.BufferGeometry();
-    let shape = createFaceGeom();
-
-    scene.add(shape);
-
-    const edges = new THREE.EdgesGeometry(shape.geometry);
-    const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
-    scene.add(lines);
-
+    // the fold object that gets passed in
+    let fold;
     let rotationRadius = 30;
 
     // rotation in XZ plane
@@ -311,8 +25,55 @@ function main() {
     let isCamPanning = false;
     let zoomLimit = 2;
     let zoomMax = 30;
-    let origin = new THREE.Vector3(0, 0, 0); // the origin that the cam orbits around
     const sensitivityScale = 0.01;
+    let origin = new THREE.Vector3(0, 0, 0);
+
+    initRenderer();
+
+    let fReader = new FileReader();
+    fReader.addEventListener("load", event => {
+        let text = fReader.result;
+        fold = JSON.parse(text);
+        loadShape();
+    });
+    fReader.readAsText(file);
+
+    // shape.geometry.computeBoundingSphere();
+    // let origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
+
+
+    // init THREE.js rendering stuff
+    function initRenderer() {
+        canvas = document.getElementById("glCanvas");
+
+        // working with WebGL context will be for the most part unnecessary as Three.js handles it
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(80, canvas.width / canvas.height, 0.1, 1000);
+
+        // pass in canvas DOM element for Three to draw to
+        renderer = new THREE.WebGLRenderer({
+            canvas: canvas
+        });
+
+        // set up cam size
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(canvas.width, canvas.height);
+
+        camera.position.setZ(30);
+    }
+
+    function loadShape() {
+        let shape = createFaceGeom();
+
+        scene.add(shape);
+
+        const edges = new THREE.EdgesGeometry(shape.geometry);
+        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+        scene.add(lines);
+
+        shape.geometry.computeBoundingSphere();
+        origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
+    }
 
     // prevent right clicks from opening the context menu anywhere
     document.addEventListener("contextmenu", e => {
@@ -484,7 +245,6 @@ function main() {
     }
 
     animate();
-
 }
 
 window.onload = main;
