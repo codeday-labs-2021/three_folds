@@ -38,9 +38,6 @@ function render(file) {
     });
     fReader.readAsText(file);
 
-    // shape.geometry.computeBoundingSphere();
-    // let origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
-
 
     // init THREE.js rendering stuff
     function initRenderer() {
