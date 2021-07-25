@@ -5,3 +5,7 @@
 .flex-child {
     flex: 1;
 }
+
+canvas {
+    background-color: black;
+}
