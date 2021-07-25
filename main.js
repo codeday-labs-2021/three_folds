@@ -34,7 +34,7 @@ function render(file) {
     fReader.addEventListener("load", event => {
         let text = fReader.result;
         fold = JSON.parse(text);
-        loadShape();
+        loadShapes();
     });
     fReader.readAsText(file);
 
@@ -62,17 +62,31 @@ function render(file) {
         camera.position.setZ(30);
     }
 
-    function loadShape() {
-        let shape = createFaceGeom();
+    function loadShapes() {
+        // clear the scene of existing objects
+        scene.clear();
+        let shapes = [];
 
-        scene.add(shape);
+        let vertex_coords = fold["vertices_coords"];
+        if (vertex_coords) {
+            shapes.push(createFaceGeom(vertex_coords));
+        } else {
+            for (let i = 0; i < fold["file_frames"].length; i++) {
+                let frame = fold["file_frames"][i];
+                shapes.push(createFaceGeom(frame["vertices_coords"], frame["faces_vertices"]));
+            }
+        }
 
-        const edges = new THREE.EdgesGeometry(shape.geometry);
-        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
-        scene.add(lines);
+        shapes.forEach(shape => {
+            scene.add(shape);
+            const edges = new THREE.EdgesGeometry(shape.geometry);
+            const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+            scene.add(lines);
+        })
 
-        shape.geometry.computeBoundingSphere();
-        origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
+        // default to using the first shape as the center as there is no way to calc it w/ >1 shapes
+        shapes[0].geometry.computeBoundingSphere();
+        origin = shapes[0].geometry.boundingSphere.center; // the origin that the cam orbits around
     }
 
     // prevent right clicks from opening the context menu anywhere
@@ -143,25 +157,29 @@ function render(file) {
         renderer.render(scene, camera);
     }
 
-    function createFaceGeom() {
-        let triangleGeometry = new THREE.BufferGeometry();
+    function createFaceGeom(vertex_coords, faces_vertices) {
+        // both have to exist in order for the shape to be rendered
+        if (vertex_coords && faces_vertices) {
+            let triangleGeometry = new THREE.BufferGeometry();
 
-        // concatenating an empty array is a bit of a hack
-        let vertsArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
-        vertsArray = mathCoordConversion(vertsArray);
-        const vertices = new Float32Array(vertsArray);
-        let faces = fold["faces_vertices"];
+            // concatenating an empty array is a bit of a hack
+            let vertsArray = deepArrayConcat(new Array(), vertex_coords);
+            vertsArray = mathCoordConversion(vertsArray);
+            const vertices = new Float32Array(vertsArray);
 
-        // check if there are any faces of more than three vertices
-        if (faces.some(el => el.length > 3)) {
-            faces = polygonToTri(faces);
+            // check if there are any faces of more than three vertices
+            if (faces_vertices.some(el => el.length > 3)) {
+                faces_vertices = polygonToTri(faces_vertices);
+            }
+            triangleGeometry.setIndex(deepArrayConcat(new Array(), faces_vertices));
+            triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+
+            let plane = new THREE.Mesh(triangleGeometry,
+                new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
+            return plane;
+        } else {
+            alert("A shape was missing necessary information to be rendered");
         }
-        triangleGeometry.setIndex(deepArrayConcat(new Array(), faces));
-        triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-
-        let plane = new THREE.Mesh(triangleGeometry,
-            new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
-        return plane;
     }
 
 
@@ -176,6 +194,10 @@ function render(file) {
      * @returns {Array} The result of deep concatenation
      */
     function deepArrayConcat(array1, array2) {
+        // TODO: handle in more graceful manner
+        if (!array2) {
+            alert("Something went wrong with coordinate arrays");
+        }
         if (array2.some(el => Array.isArray(el))) {
             array2.forEach(element => {
                 if (Array.isArray(element)) {
