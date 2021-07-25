@@ -38,9 +38,6 @@ function render(file) {
     });
     fReader.readAsText(file);
 
-    // shape.geometry.computeBoundingSphere();
-    // let origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
-
 
     // init THREE.js rendering stuff
     function initRenderer() {
@@ -71,11 +68,30 @@ function render(file) {
         if (vertex_coords) {
             shapes.push(createFaceGeom(vertex_coords));
         } else {
+            // assuming one frame is creases and other is 3D folded shape
             for (let i = 0; i < fold["file_frames"].length; i++) {
                 let frame = fold["file_frames"][i];
-                let createdGeom = createFaceGeom(frame["vertices_coords"], frame["faces_vertices"]);
-                if (createdGeom) {
-                    shapes.push(createdGeom);
+
+                // these class names are now specific to our implementation
+                if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
+                    let verts = frame["vertices_coords"];
+                    let faces = frame["faces_vertices"];
+
+                    // handle inheriting attributes if they don't exist in this frame
+                    if (!verts) {
+                        // ugly
+                        verts = fold["file_frames"][frame["frame_parent"]]["vertices_coords"];
+                    }
+                    if (!faces) {
+                        faces = fold["file_frames"][frame["frame_parent"]]["faces_vertices"];
+                    }
+                    console.log(verts, faces);
+                    let createdGeom = createFaceGeom(verts, faces);
+
+                    // in case of failure somehow do not add it to the scene
+                    if (createdGeom) {
+                        shapes.push(createdGeom);
+                    }
                 }
             }
         }
@@ -83,7 +99,9 @@ function render(file) {
         shapes.forEach(shape => {
             scene.add(shape);
             const edges = new THREE.EdgesGeometry(shape.geometry);
-            const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
+            const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
+                color: 0xffffff,
+            }));
             scene.add(lines);
         })
 
