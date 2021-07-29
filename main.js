@@ -1,278 +1,5 @@
 function main() {
 
-    // frick CORS
-    const fold = {
-        "file_spec": 1,
-        "file_creator": "Mathematica",
-        "file_author": "Thomas Hull",
-        "file_classes": ["singleModel"],
-        "frame_title": "Rigidly folded square twist",
-        "frame_classes": ["foldedForm"],
-        "frame_attributes": ["3D"],
-        "vertices_coords": [
-            [
-                0,
-                0,
-                0
-            ],
-            [
-                0.25,
-                0,
-                0
-            ],
-            [
-                0.25,
-                0.5,
-                0
-            ],
-            [
-                0,
-                0.5,
-                0
-            ],
-            [
-                0.466968,
-                0,
-                -0.124197
-            ],
-            [
-                0.966968,
-                0,
-                -0.124197
-            ],
-            [
-                0.966968,
-                0.25,
-                -0.124197
-            ],
-            [
-                0.466968,
-                0.25,
-                -0.124197
-            ],
-            [
-                0.716968,
-                0.354037,
-                0.103128
-            ],
-            [
-                0.966968,
-                0.354037,
-                0.103128
-            ],
-            [
-                0.966968,
-                0.854037,
-                0.103128
-            ],
-            [
-                0.716968,
-                0.854037,
-                0.103128
-            ],
-            [
-                0,
-                0.854037,
-                0.227324
-            ],
-            [
-                0,
-                0.604037,
-                0.227324
-            ],
-            [
-                0.5,
-                0.604037,
-                0.227324
-            ],
-            [
-                0.5,
-                0.854037,
-                0.227324
-            ]
-        ],
-        "faces_vertices": [
-            [
-                0,
-                1,
-                2,
-                3
-            ],
-            [
-                1,
-                4,
-                7,
-                2
-            ],
-            [
-                4,
-                5,
-                6,
-                7
-            ],
-            [
-                7,
-                6,
-                9,
-                8
-            ],
-            [
-                8,
-                9,
-                10,
-                11
-            ],
-            [
-                15,
-                14,
-                8,
-                11
-            ],
-            [
-                12,
-                13,
-                14,
-                15
-            ],
-            [
-                3,
-                2,
-                14,
-                13
-            ],
-            [
-                2,
-                7,
-                8,
-                14
-            ]
-        ],
-        "edges_vertices": [
-            [
-                0,
-                1
-            ],
-            [
-                1,
-                2
-            ],
-            [
-                2,
-                3
-            ],
-            [
-                3,
-                0
-            ],
-            [
-                4,
-                5
-            ],
-            [
-                5,
-                6
-            ],
-            [
-                6,
-                7
-            ],
-            [
-                7,
-                4
-            ],
-            [
-                8,
-                9
-            ],
-            [
-                9,
-                10
-            ],
-            [
-                10,
-                11
-            ],
-            [
-                11,
-                8
-            ],
-            [
-                12,
-                13
-            ],
-            [
-                13,
-                14
-            ],
-            [
-                14,
-                15
-            ],
-            [
-                15,
-                12
-            ],
-            [
-                2,
-                7
-            ],
-            [
-                7,
-                8
-            ],
-            [
-                8,
-                14
-            ],
-            [
-                14,
-                2
-            ],
-            [
-                3,
-                13
-            ],
-            [
-                1,
-                4
-            ],
-            [
-                6,
-                9
-            ],
-            [
-                11,
-                15
-            ]
-        ],
-        "edges_assignment": [
-            "B",
-            "M",
-            "V",
-            "B",
-            "B",
-            "B",
-            "V",
-            "V",
-            "M",
-            "B",
-            "B",
-            "V",
-            "B",
-            "M",
-            "M",
-            "B",
-            "V",
-            "M",
-            "M",
-            "V",
-            "B",
-            "B",
-            "B",
-            "B"
-        ]
-    };
-
     const canvas = document.getElementById("glCanvas");
 
     // working with WebGL context will be for the most part unnecessary as Three.js handles it
@@ -487,18 +214,9 @@ function main() {
 
 }
 
-// window.onload = main;
-  
-  //   // Set clear color to black, fully opaque
-  //   gl.clearColor(0.0, 0.0, 0.0, 1.0);
-  //   // Clear the color buffer with specified clear color
-  //   gl.clear(gl.COLOR_BUFFER_BIT);
-  // // // }
-  
-// window.onload = main;
-  
+
 function drawVertLine(){
-  // data 
+  // data
   const vertices_coords = simpleJsonObj['vertices_coords']
   const edges_vertices = simpleJsonObj['edges_vertices']
 
@@ -513,7 +231,7 @@ function drawVertLine(){
         newRect.setAttribute("fill", "#5cceee");
         newRect.setAttribute("stroke", "black");
         newRect.setAttribute('stroke-width', '.5');
-      
+
         // append the new rectangle to the svg
         svg.appendChild(newRect);
 
@@ -534,7 +252,7 @@ function drawVertLine(){
       // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
 
 
-      // draw line 
+      // draw line
 
       newline.setAttribute('x1',from_coords[0] * 100) ;
       newline.setAttribute('y1', from_coords[1] * 100);
@@ -552,7 +270,7 @@ function drawVertLine(){
 
 
 
-  // variable for the namespace 
+  // variable for the namespace
 
   // make a simple rectangle
 
@@ -560,7 +278,7 @@ function drawVertLine(){
 
 // vertixs array for rect min and max
 
- 
+
   }
 
   // loop over edges arrays for line
@@ -574,33 +292,29 @@ function findNearestVert(){
 
     const vertices_coords = simpleJsonObj['vertices_coords']
     const edges_vertices = simpleJsonObj['edges_vertices']
-  
+
 
     for (const edge of edges_vertices) {
-    
+
         console.log('Looking at edge ', edge);
         // x coordniate
         const from_vertex_index = edge[0];
         // y coordniate
         const to_vertex_index = edge[1];
-  
+
         // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
         // const from_coords = vertices_coords[from_vertex_index];
         // const to_coords = vertices_coords[to_vertex_index];
-  
+
         // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
-  
-  
-        // draw line 
+
+
+        // draw line
 
         console.log(Math.hypot(edge[0],edge[1],24,10))
-  
-        
-  
-  
 
 
-}
+    }
 }
 
 
@@ -613,10 +327,3 @@ window.onload = function() {
   findNearestVert()
   drawVertLine();
 }
-
-
-
-
-
-
-
