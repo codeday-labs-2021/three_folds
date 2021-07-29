@@ -65,8 +65,9 @@ function render(file) {
         let shapes = [];
 
         let vertex_coords = fold["vertices_coords"];
-        if (vertex_coords) {
-            shapes.push(createFaceGeom(vertex_coords));
+        let faces_indexes = fold["faces_vertices"];
+        if (vertex_coords && faces_indexes) {
+            shapes.push(createFaceGeom(vertex_coords, faces_indexes));
         } else {
             // assuming one frame is creases and other is 3D folded shape
             for (let i = 0; i < fold["file_frames"].length; i++) {
