@@ -34,7 +34,7 @@ function render(file) {
     fReader.addEventListener("load", event => {
         let text = fReader.result;
         fold = JSON.parse(text);
-        loadShape();
+        loadShapes();
     });
     fReader.readAsText(file);
 
@@ -59,17 +59,54 @@ function render(file) {
         camera.position.setZ(30);
     }
 
-    function loadShape() {
-        let shape = createFaceGeom();
+    function loadShapes() {
+        // clear the scene of existing objects
+        scene.clear();
+        let shapes = [];
 
-        scene.add(shape);
+        if (fold["file_frames"]) {
+            // assuming one frame is creases and other is 3D folded shape
+            for (let i = 0; i < fold["file_frames"].length; i++) {
+                let frame = fold["file_frames"][i];
 
-        const edges = new THREE.EdgesGeometry(shape.geometry);
-        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0xffffff}));
-        scene.add(lines);
+                // these class names are now specific to our implementation
+                if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
+                    let verts = frame["vertices_coords"];
+                    let faces = frame["faces_vertices"];
 
-        shape.geometry.computeBoundingSphere();
-        origin = shape.geometry.boundingSphere.center; // the origin that the cam orbits around
+                    // handle inheriting attributes if they don't exist in this frame
+                    if (!verts) {
+                        // ugly
+                        verts = fold["file_frames"][frame["frame_parent"]]["vertices_coords"];
+                    }
+                    if (!faces) {
+                        faces = fold["file_frames"][frame["frame_parent"]]["faces_vertices"];
+                    }
+                    console.log(verts, faces);
+                    let createdGeom = createFaceGeom(verts, faces);
+
+                    // in case of failure somehow do not add it to the scene
+                    if (createdGeom) {
+                        shapes.push(createdGeom);
+                    }
+                }
+            }
+        } else {
+            shapes.push(createFaceGeom(fold["vertices_coords"], fold["faces_vertices"]));
+        }
+
+        shapes.forEach(shape => {
+            scene.add(shape);
+            const edges = new THREE.EdgesGeometry(shape.geometry);
+            const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
+                color: 0xffffff,
+            }));
+            scene.add(lines);
+        })
+
+        // default to using the first shape as the center as there is no way to calc it w/ >1 shapes
+        shapes[0].geometry.computeBoundingSphere();
+        origin = shapes[0].geometry.boundingSphere.center; // the origin that the cam orbits around
     }
 
     // prevent right clicks from opening the context menu anywhere
@@ -140,30 +177,64 @@ function render(file) {
         renderer.render(scene, camera);
     }
 
-    function createFaceGeom() {
-        let triangleGeometry = new THREE.BufferGeometry();
+    function createFaceGeom(vertex_coords, faces_vertices) {
+        // both have to exist in order for the shape to be rendered
+        if (vertex_coords && faces_vertices) {
+            let triangleGeometry = new THREE.BufferGeometry();
 
-        // concatenating an empty array is a bit of a hack
-        let vertsArray = deepArrayConcat(new Array(), fold["vertices_coords"]);
-        vertsArray = mathCoordConversion(vertsArray);
-        const vertices = new Float32Array(vertsArray);
-        let faces = fold["faces_vertices"];
+            if (vertex_coords.some(el => el.length !== 3)) {
+                vertex_coords = enforce3DCoordinates(vertex_coords);
+            }
 
-        // check if there are any faces of more than three vertices
-        if (faces.some(el => el.length > 3)) {
-            faces = polygonToTri(faces);
+            // concatenating an empty array is a bit of a hack, bascially just squish the array
+            let vertsArray = deepArrayConcat(new Array(), vertex_coords);
+            vertsArray = mathCoordConversion(vertsArray);
+            const vertices = new Float32Array(vertsArray);
+
+            // check if there are any faces of more than three vertices
+            if (faces_vertices.some(el => el.length > 3)) {
+                faces_vertices = polygonToTri(faces_vertices);
+            }
+            triangleGeometry.setIndex(deepArrayConcat(new Array(), faces_vertices));
+            triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+
+            let plane = new THREE.Mesh(triangleGeometry,
+                new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
+            return plane;
+        } else {
+            alert("A shape was missing necessary information to be rendered");
+            return null;
         }
-        triangleGeometry.setIndex(deepArrayConcat(new Array(), faces));
-        triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-
-        let plane = new THREE.Mesh(triangleGeometry,
-            new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
-        return plane;
     }
 
 
     function degToRad(degrees) {
         return degrees * (Math.PI / 180);
+    }
+
+    /**
+     * Given an array of arrays representing points, pads 'points' that do not have three values
+     * with zeroes on the end, removes the last element of 'points' that have four elements. Does
+     * not handle 'points' with n < 2 or n > 4 elements. This is necessary because FOLD objects
+     * sometimes do not store the third value in the point, and assume it to be zero.
+     * @param {Array} pointList A list of Arrays, representing points in 3D space
+     * @returns {Array} The same list but with every point modified to be in 3D
+     */
+    function enforce3DCoordinates(pointList) {
+        let outArray = [];
+        for (let i = 0; i < pointList.length; i++) {
+            let point = pointList[i];
+            if (point.length === 2) {
+                outArray = outArray.concat(point);
+                outArray.push(0);
+            } else if (point.length === 4) {
+                point.pop();
+                outArray = outArray.concat(point);
+            } else {
+                outArray = outArray.concat(point);
+            }
+        }
+        return outArray;
     }
 
     /**
@@ -173,6 +244,10 @@ function render(file) {
      * @returns {Array} The result of deep concatenation
      */
     function deepArrayConcat(array1, array2) {
+        // TODO: handle in more graceful manner
+        if (!array2) {
+            alert("Something went wrong with coordinate arrays");
+        }
         if (array2.some(el => Array.isArray(el))) {
             array2.forEach(element => {
                 if (Array.isArray(element)) {
