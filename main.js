@@ -1,5 +1,5 @@
 function main() {
-    let fileInput = document.getElementById("fold-input");
+    let fileInput = document.getElementById("fold_input");
     fileInput.addEventListener("change", event => {
         const fileList = event.target.files;
         render(fileList[0]);
