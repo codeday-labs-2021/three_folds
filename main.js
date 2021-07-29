@@ -7,11 +7,129 @@ function main() {
 }
 
 function render(file) {
+    let fReader = new FileReader();
+    fReader.addEventListener("load", event => {
+        let text = fReader.result;
+        fold = JSON.parse(text);
+        render2D(fold);
+        render3D(fold);
+    });
+    fReader.readAsText(file);
+}
+
+function render2D(foldObj) {
+
+    drawVertLine();
+
+
+    function drawVertLine(){
+        // data
+        const vertices_coords = foldObj['vertices_coords']
+        const edges_vertices = foldObj['edges_vertices']
+
+        const svgns = "http://www.w3.org/2000/svg";
+        let newRect = document.createElementNS(svgns, "rect");
+
+              // draw rectangle
+              newRect.setAttribute("x", vertices_coords[0][0]);
+              newRect.setAttribute("y", vertices_coords[0][0]);
+              newRect.setAttribute("width", "800");
+              newRect.setAttribute("height", "600");
+              newRect.setAttribute("fill", "#5cceee");
+              newRect.setAttribute("stroke", "black");
+              newRect.setAttribute('stroke-width', '.5');
+
+              // append the new rectangle to the svg
+              svg.appendChild(newRect);
+
+        // draws line
+        for (const edge of edges_vertices) {
+          let newline = document.createElementNS(svgns, "line");
+
+            // console.log('Looking at edge ', edge);
+            // x coordniate
+            const from_vertex_index = edge[0];
+            // y coordniate
+            const to_vertex_index = edge[1];
+
+            // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
+            const from_coords = vertices_coords[from_vertex_index];
+            const to_coords = vertices_coords[to_vertex_index];
+
+            // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
+
+
+            // draw line
+
+            newline.setAttribute('x1',from_coords[0] * 100) ;
+            newline.setAttribute('y1', from_coords[1] * 100);
+            newline.setAttribute('x2', to_coords[0] * 100);
+            newline.setAttribute('y2', to_coords[1] * 100) ;
+            newline.setAttribute('stroke-width', '.5');
+            newline.setAttribute("stroke", "white")
+            newline.setAttribute('stroke-dasharray', "6")
+            // console.log("***************from__coords***8",from_coords[0])
+            // console.log("***************to_coords****",to_coords[1])
+            svg.appendChild(newline);
+
+
+
+
+
+
+        // variable for the namespace
+
+        // make a simple rectangle
+
+
+
+      // vertixs array for rect min and max
+
+
+        }
+
+        // loop over edges arrays for line
+
+      }
+
+
+      function findNearestVert(){
+
+          // loop through the vertices and calculate the distance between the vertex and where ever the user is
+
+          const vertices_coords = foldObj['vertices_coords']
+          const edges_vertices = foldObj['edges_vertices']
+
+
+          for (const edge of edges_vertices) {
+
+              console.log('Looking at edge ', edge);
+              // x coordniate
+              const from_vertex_index = edge[0];
+              // y coordniate
+              const to_vertex_index = edge[1];
+
+              // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
+              // const from_coords = vertices_coords[from_vertex_index];
+              // const to_coords = vertices_coords[to_vertex_index];
+
+              // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
+
+
+              // draw line
+
+              console.log(Math.hypot(edge[0],edge[1],24,10));
+
+          }
+      }
+
+}
+
+function render3D(foldObj) {
 
     let canvas, scene, camera, renderer;
 
     // the fold object that gets passed in
-    let fold;
     let rotationRadius = 30;
 
     // rotation in XZ plane
@@ -28,15 +146,7 @@ function render(file) {
     let origin = new THREE.Vector3(0, 0, 0);
 
     initRenderer();
-
-    let fReader = new FileReader();
-    fReader.addEventListener("load", event => {
-        let text = fReader.result;
-        fold = JSON.parse(text);
-        loadShapes();
-    });
-    fReader.readAsText(file);
-
+    loadShapes();
 
     // init THREE.js rendering stuff
     function initRenderer() {
@@ -63,10 +173,10 @@ function render(file) {
         scene.clear();
         let shapes = [];
 
-        if (fold["file_frames"]) {
+        if (foldObj["file_frames"]) {
             // assuming one frame is creases and other is 3D folded shape
-            for (let i = 0; i < fold["file_frames"].length; i++) {
-                let frame = fold["file_frames"][i];
+            for (let i = 0; i < foldObj["file_frames"].length; i++) {
+                let frame = foldObj["file_frames"][i];
 
                 // these class names are now specific to our implementation
                 if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
@@ -76,10 +186,10 @@ function render(file) {
                     // handle inheriting attributes if they don't exist in this frame
                     if (!verts) {
                         // ugly
-                        verts = fold["file_frames"][frame["frame_parent"]]["vertices_coords"];
+                        verts = foldObj["file_frames"][frame["frame_parent"]]["vertices_coords"];
                     }
                     if (!faces) {
-                        faces = fold["file_frames"][frame["frame_parent"]]["faces_vertices"];
+                        faces = foldObj["file_frames"][frame["frame_parent"]]["faces_vertices"];
                     }
                     console.log(verts, faces);
                     let createdGeom = createFaceGeom(verts, faces);
@@ -91,7 +201,7 @@ function render(file) {
                 }
             }
         } else {
-            shapes.push(createFaceGeom(fold["vertices_coords"], fold["faces_vertices"]));
+            shapes.push(createFaceGeom(foldObj["vertices_coords"], foldObj["faces_vertices"]));
         }
 
         shapes.forEach(shape => {
@@ -318,116 +428,6 @@ function render(file) {
     animate();
 }
 
-
-function drawVertLine(){
-  // data
-  const vertices_coords = simpleJsonObj['vertices_coords']
-  const edges_vertices = simpleJsonObj['edges_vertices']
-
-  const svgns = "http://www.w3.org/2000/svg";
-  let newRect = document.createElementNS(svgns, "rect");
-
-        // draw rectangle
-        newRect.setAttribute("x", vertices_coords[0][0]);
-        newRect.setAttribute("y", vertices_coords[0][0]);
-        newRect.setAttribute("width", "800");
-        newRect.setAttribute("height", "600");
-        newRect.setAttribute("fill", "#5cceee");
-        newRect.setAttribute("stroke", "black");
-        newRect.setAttribute('stroke-width', '.5');
-
-        // append the new rectangle to the svg
-        svg.appendChild(newRect);
-
-  // draws line
-  for (const edge of edges_vertices) {
-    let newline = document.createElementNS(svgns, "line");
-
-      // console.log('Looking at edge ', edge);
-      // x coordniate
-      const from_vertex_index = edge[0];
-      // y coordniate
-      const to_vertex_index = edge[1];
-
-      // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
-      const from_coords = vertices_coords[from_vertex_index];
-      const to_coords = vertices_coords[to_vertex_index];
-
-      // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
-
-
-      // draw line
-
-      newline.setAttribute('x1',from_coords[0] * 100) ;
-      newline.setAttribute('y1', from_coords[1] * 100);
-      newline.setAttribute('x2', to_coords[0] * 100);
-      newline.setAttribute('y2', to_coords[1] * 100) ;
-      newline.setAttribute('stroke-width', '.5');
-      newline.setAttribute("stroke", "white")
-      newline.setAttribute('stroke-dasharray', "6")
-      // console.log("***************from__coords***8",from_coords[0])
-      // console.log("***************to_coords****",to_coords[1])
-      svg.appendChild(newline);
-
-
-
-
-
-
-  // variable for the namespace
-
-  // make a simple rectangle
-
-
-
-// vertixs array for rect min and max
-
-
-  }
-
-  // loop over edges arrays for line
-
-}
-
-
-function findNearestVert(){
-
-    // loop through the vertices and calculate the distance between the vertex and where ever the user is
-
-    const vertices_coords = simpleJsonObj['vertices_coords']
-    const edges_vertices = simpleJsonObj['edges_vertices']
-
-
-    for (const edge of edges_vertices) {
-
-        console.log('Looking at edge ', edge);
-        // x coordniate
-        const from_vertex_index = edge[0];
-        // y coordniate
-        const to_vertex_index = edge[1];
-
-        // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
-        // const from_coords = vertices_coords[from_vertex_index];
-        // const to_coords = vertices_coords[to_vertex_index];
-
-        // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
-
-
-        // draw line
-
-        console.log(Math.hypot(edge[0],edge[1],24,10))
-
-
-    }
-}
-
-
-
-
-
-
 window.onload = function() {
-  main();
-  findNearestVert()
-  drawVertLine();
+    main();
 }
