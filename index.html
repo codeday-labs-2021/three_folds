@@ -6,9 +6,7 @@
         <title>ThreeFolds: FOLD creation tool using Three.JS</title>
         <meta name='viewport' content='width=device-width, initial-scale=1'>
         <link rel='stylesheet' type='text/css' media='screen' href='./styles/styles.css'>
-        <link type="text/css" rel="stylesheet" href="main.css">
         <script src="external/three.js"></script>
-        <script src='main.js'></script>
     </head>
     <body>
         <div class='parent flex-parent'>
@@ -16,22 +14,23 @@
                 <canvas id="glCanvas" width="640" height="480"></canvas>
             </div>
             <div class='child flex-child'>
-                <svg id="svg" viewBox="0 0 100 100" width="800" height="600" preserveAspectRatio="none">
+                <svg id="svg" viewBox="0 0 800 600" width="800" height="600" preserveAspectRatio="none">
                 </svg>
             </div>
 
         </div>
+        <input type="file" id="fold_input" accept=".fold">
 
-        <script type='text/javascript' src='./simple.fold'></script>
-        <script type='text/javascript' src='external/fold.js'></script>
-        <script src="external/three.js"></script>
+        <!-- <script src="external/require.js"></script> -->
 
+        <script src="external/fold.js"></script>
+        <!-- <script type="module" src='external/fold.js'></script> -->
+        <script src="https://requirejs.org/docs/release/2.3.6/minified/require.js"></script>
         <script src='main.js'></script>
         <!-- <svg width="800" height="600">
             <rect width="800" height="600" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
             <line x1="0" x2="900" y1="0" y2="673" stroke="white"
                 stroke-width="3" stroke-linecap="square"  stroke-dasharray="6"/>
         </svg> -->
-        <input type="file" id="fold_input" accept=".fold">
     </body>
 </html>

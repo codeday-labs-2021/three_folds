@@ -1,3 +1,9 @@
+"use strict";
+
+// import * as FOLD from "external/fold.js";
+const FOLD = require("fold");
+// const THREE = require("three");
+
 function main() {
     let fileInput = document.getElementById("fold_input");
     fileInput.addEventListener("change", event => {
@@ -10,22 +16,43 @@ function render(file) {
     let fReader = new FileReader();
     fReader.addEventListener("load", event => {
         let text = fReader.result;
-        fold = JSON.parse(text);
-        render2D(fold);
-        render3D(fold);
+        let foldObj = JSON.parse(text);
+        render2D(foldObj);
+        render3D(foldObj);
     });
     fReader.readAsText(file);
 }
 
 function render2D(foldObj) {
 
+    let creaseFrameExists = false;
+
     drawVertLine();
 
 
     function drawVertLine(){
         // data
-        const vertices_coords = foldObj['vertices_coords']
-        const edges_vertices = foldObj['edges_vertices']
+        let frame = foldObj["file_frames"];
+        if (frame) {
+            for (let i = 0; i < frame.length; i++) {
+                if (frame[i]["frame_classes"][0] === "creasePattern") {
+                    frame = frame[i];
+                    creaseFrameExists = true;
+                }
+            }
+        }
+
+        // not gonna handle inheritance, just expect creasePattern to have all info
+        let vertices_coords, edges_vertices;
+        if (creaseFrameExists) {
+            vertices_coords = frame["vertices_coords"];
+            edges_vertices = frame["edges_vertices"];
+        } else {
+            FOLD.convert.flatFoldedGeometry(foldObj);
+            vertices_coords = foldObj["vertices_flatFoldCoords"];
+            edges_vertices = foldObj['edges_vertices'];
+        }
+
 
         const svgns = "http://www.w3.org/2000/svg";
         let newRect = document.createElementNS(svgns, "rect");
@@ -33,18 +60,21 @@ function render2D(foldObj) {
               // draw rectangle
               newRect.setAttribute("x", vertices_coords[0][0]);
               newRect.setAttribute("y", vertices_coords[0][0]);
-              newRect.setAttribute("width", "800");
-              newRect.setAttribute("height", "600");
+              newRect.setAttribute("width", 800);
+              newRect.setAttribute("height", 600);
               newRect.setAttribute("fill", "#5cceee");
               newRect.setAttribute("stroke", "black");
-              newRect.setAttribute('stroke-width', '.5');
+              newRect.setAttribute('stroke-width', '.2');
 
               // append the new rectangle to the svg
               svg.appendChild(newRect);
 
-        // draws line
+        // find line information to adjust and scale them to the viewport
+        let [xOffset, yOffset] = [0, 0];
+        let [minX, maxX] = [Infinity, -Infinity];
+        let [minY, maxY] = [Infinity, -Infinity];
+        let lines = [];
         for (const edge of edges_vertices) {
-          let newline = document.createElementNS(svgns, "line");
 
             // console.log('Looking at edge ', edge);
             // x coordniate
@@ -52,25 +82,56 @@ function render2D(foldObj) {
             // y coordniate
             const to_vertex_index = edge[1];
 
+
             // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
             const from_coords = vertices_coords[from_vertex_index];
             const to_coords = vertices_coords[to_vertex_index];
 
+            let line = from_coords.concat(to_coords);
+            lines.push(line);
+
+            // this part finds the max offsets so everything can be shifted into a viewable position
+            let x1 = from_coords[0];
+            let x2 = to_coords[0];
+            if (x1 < 0 || x2 < 0) {
+                xOffset = Math.max(Math.abs(x2), Math.abs(x1), xOffset);
+            }
+            let y1 = from_coords[1];
+            let y2 = to_coords[1];
+            if (y1 < 0 || y2 < 0) {
+                yOffset = Math.max(Math.abs(y2), Math.abs(y1), yOffset);
+
+            }
+
+            // for scaling purposes, hopefully only needs to be done once
+            minX = Math.min(minX, x1, x2);
+            maxX = Math.max(maxX, x1, x2);
+            minY = Math.min(minY, y1, y2);
+            maxY = Math.max(maxY, y1, y2);
             // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
+        }
 
+        // getting the max X and Y size of the viewbox
+        let viewportDim = document.querySelector("svg").viewBox.baseVal;
+        console.log(viewportDim);
+        let xScale = viewportDim["width"] / (maxX - minX);
+        let yScale = viewportDim["height"] / (maxY - minY);
 
-            // draw line
-
-            newline.setAttribute('x1',from_coords[0] * 100) ;
-            newline.setAttribute('y1', from_coords[1] * 100);
-            newline.setAttribute('x2', to_coords[0] * 100);
-            newline.setAttribute('y2', to_coords[1] * 100) ;
-            newline.setAttribute('stroke-width', '.5');
+        // draw crease lines
+        for (let i = 0; i < lines.length; i++) {
+            let newline = document.createElementNS(svgns, "line");
+            newline.setAttribute('x1', (lines[i][0] + xOffset) * xScale);
+            newline.setAttribute('y1', (lines[i][1] + yOffset) * yScale);
+            newline.setAttribute('x2', (lines[i][2] + xOffset) * xScale);
+            newline.setAttribute('y2', (lines[i][3] + yOffset) * yScale);
+            newline.setAttribute('stroke-width', '2');
             newline.setAttribute("stroke", "white")
-            newline.setAttribute('stroke-dasharray', "6")
-            // console.log("***************from__coords***8",from_coords[0])
+            newline.setAttribute('stroke-dasharray', "2")
+            // console.log("***************from__coords****",from_coords[0])
             // console.log("***************to_coords****",to_coords[1])
             svg.appendChild(newline);
+        }
+
 
 
 
@@ -85,12 +146,9 @@ function render2D(foldObj) {
 
       // vertixs array for rect min and max
 
-
-        }
-
         // loop over edges arrays for line
 
-      }
+    }
 
 
       function findNearestVert(){
@@ -147,6 +205,7 @@ function render3D(foldObj) {
 
     initRenderer();
     loadShapes();
+    animate();
 
     // init THREE.js rendering stuff
     function initRenderer() {
@@ -191,7 +250,6 @@ function render3D(foldObj) {
                     if (!faces) {
                         faces = foldObj["file_frames"][frame["frame_parent"]]["faces_vertices"];
                     }
-                    console.log(verts, faces);
                     let createdGeom = createFaceGeom(verts, faces);
 
                     // in case of failure somehow do not add it to the scene
@@ -424,8 +482,6 @@ function render3D(foldObj) {
         }
         return outArray;
     }
-
-    animate();
 }
 
 window.onload = function() {
