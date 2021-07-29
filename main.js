@@ -130,7 +130,7 @@ function render3D(foldObj) {
     let canvas, scene, camera, renderer;
 
     // the fold object that gets passed in
-    let rotationRadius = 30;
+    let rotationRadius = 10;
 
     // rotation in XZ plane
     let theta = 0;
@@ -165,7 +165,7 @@ function render3D(foldObj) {
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(canvas.width, canvas.height);
 
-        camera.position.setZ(30);
+        camera.position.setZ(rotationRadius);
     }
 
     function loadShapes() {
