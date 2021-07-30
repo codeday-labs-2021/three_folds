@@ -28,14 +28,18 @@ function render(file, reRender) {
 function render2D(foldObj, reRender) {
 
     const svgns = "http://www.w3.org/2000/svg";
+    const vertexEpsilon = 10;
+    const lineEpsilon = 10;
     let creaseFrameExists = false;
     let svg = document.getElementById("svg");
     let mathLines = [];
+    let mathVertices = [];
 
     drawVertLine();
     initSVGListeners(reRender);
 
     function drawVertLine(){
+        svg.innerHTML = "";
         // data
         let frame = foldObj["file_frames"];
         if (frame) {
@@ -71,7 +75,6 @@ function render2D(foldObj, reRender) {
 
         // append the new rectangle to the svg
         svg.appendChild(newRect);
-        console.log(svg);
 
         // find line information to adjust and scale them to the viewport
         let [xOffset, yOffset] = [0, 0];
@@ -148,18 +151,16 @@ function render2D(foldObj, reRender) {
                 new THREE.Vector3(line[2], line[3], 0)));
         }
 
-
-
+        // init the math vertices
+        for (let i = 0; i < vertices_coords.length; i++) {
+            mathVertices.push(new THREE.Vector3((vertices_coords[i][0] + xOffset) * xScale,
+                (vertices_coords[i][1] + yOffset) * yScale, 0));
+        }
 
 
         // variable for the namespace
-
         // make a simple rectangle
-
-
-
-      // vertixs array for rect min and max
-
+        // vertixs array for rect min and max
         // loop over edges arrays for line
 
     }
@@ -167,7 +168,6 @@ function render2D(foldObj, reRender) {
     function initSVGListeners(reRender) {
         if (!reRender) {
             svg.addEventListener("click", e => {
-                console.log("the SVG was clicked");
                 clickAPoint(e);
             });
         }
@@ -180,29 +180,77 @@ function render2D(foldObj, reRender) {
     function clickAPoint(event) {
         let x = event.offsetX;
         let y = event.offsetY;
-        console.log("I registered a click at: " + x + ", " + y);
+        // console.log("I registered a click at: " + x + ", " + y);
 
         let clickPosition = new THREE.Vector3(x, y, 0);
-        let closestPoints = mathLines.map(line => {
-            console.log(line);
-            let p = new THREE.Vector3();
-            line.closestPointToPoint(clickPosition, true, p);
-            return p;
-        });
-        let pointDistances = closestPoints.map(point => point.distanceTo(clickPosition));
-        let min = 0;
-        for (let i = 0; i < pointDistances.length; i++) {
-            if (pointDistances[i] < pointDistances[min]) {
-                min = i;
+
+        let vertsDistances = mathVertices.map(vert => vert.distanceTo(clickPosition));
+        // console.log(vertsDistances);
+        let vertSelected = false;
+        let i = 0;
+        while (!vertSelected && i <= vertsDistances.length) {
+            if (vertsDistances[i] < vertexEpsilon) {
+                selectPoint(mathVertices[i]);
+                vertSelected = true;
+            }
+            i++;
+        }
+        if (!vertSelected) {
+            let closestPoints = mathLines.map(line => {
+                let p = new THREE.Vector3();
+                line.closestPointToPoint(clickPosition, true, p);
+                return p;
+            });
+            let pointDistances = closestPoints.map(point => point.distanceTo(clickPosition));
+            let min = 0;
+            for (let i = 0; i < pointDistances.length; i++) {
+                if (pointDistances[i] < pointDistances[min]) {
+                    min = i;
+                }
+            }
+            let closestLine = mathLines[min];
+            if (pointDistances[min] < lineEpsilon) {
+                selectLine(closestLine);
             }
         }
-        let closestPoint = closestPoints[min];
 
+
+        // let circle = document.createElementNS(svgns, "circle");
+        // circle.setAttribute("cx", closestPoint.x);
+        // circle.setAttribute("cy", closestPoint.y);
+        // circle.setAttribute("r", 5);
+        // circle.classList.add("selection");
+        // svg.appendChild(circle);
+    }
+
+    /**
+     * Handles the selected point and draws the corresponding selectinon to the SVG view
+     * @param {Vector3} point A THREE Vector3 representing a point that is selected on the SVG
+     */
+    function selectPoint(point) {
+        // TODO print
+        console.log("A point was selected");
         let circle = document.createElementNS(svgns, "circle");
-        circle.setAttribute("cx", closestPoint.x);
-        circle.setAttribute("cy", closestPoint.y);
+        circle.setAttribute("cx", point.x);
+        circle.setAttribute("cy", point.y);
         circle.setAttribute("r", 5);
+        circle.classList.add("selection");
         svg.appendChild(circle);
+    }
+
+    function selectLine(line) {
+        // TODO print
+        console.log("A line was selected");
+        let newline = document.createElementNS(svgns, "line");
+        newline.setAttribute('x1', line.start.x);
+        newline.setAttribute('y1', line.start.y);
+        newline.setAttribute('x2', line.end.x);
+        newline.setAttribute('y2', line.end.y);
+        newline.setAttribute('stroke-width', '5');
+        newline.setAttribute("stroke", "black")
+        newline.setAttribute('stroke-dasharray', "2")
+        newline.classList.add("selection");
+        svg.appendChild(newline);
     }
 
 
@@ -293,10 +341,14 @@ function render3D(foldObj, reRender) {
 
         if (foldObj["file_frames"]) {
             // assuming one frame is creases and other is 3D folded shape
+            let primaryStructureFound = foldObj["file_frames"].some(frame => {
+                return frame["frame_classes"].includes("foldedForm");
+            });
+
             for (let i = 0; i < foldObj["file_frames"].length; i++) {
                 let frame = foldObj["file_frames"][i];
 
-                // these class names are now specific to our implementation
+                // these class names are specific to our implementation
                 if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
                     let verts = frame["vertices_coords"];
                     let faces = frame["faces_vertices"];
@@ -315,6 +367,9 @@ function render3D(foldObj, reRender) {
                     if (createdGeom) {
                         shapes.push(createdGeom);
                     }
+                } else if (frame["frame_classes"].includes("creasePattern") && !primaryStructureFound) {
+                    let createdGeom = createFaceGeom(frame["vertices_coords"], frame["faces_vertices"]);
+                    if (createdGeom) shapes.push(createdGeom);
                 }
             }
         } else {
