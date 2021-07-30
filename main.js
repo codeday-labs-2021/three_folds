@@ -125,30 +125,8 @@ function render2D(foldObj, reRender) {
 
         // draw crease lines
         for (let i = 0; i < lines.length; i++) {
-
-
             let line = lines[i];
-
-            line[0] = (line[0] + xOffset) * xScale;
-            line[1] = (line[1] + yOffset) * yScale;
-            line[2] = (line[2] + xOffset) * xScale;
-            line[3] = (line[3] + yOffset) * yScale;
-
-            let newline = document.createElementNS(svgns, "line");
-            newline.setAttribute('x1', line[0]);
-            newline.setAttribute('y1', line[1]);
-            newline.setAttribute('x2', line[2]);
-            newline.setAttribute('y2', line[3]);
-            newline.setAttribute('stroke-width', '2');
-            newline.setAttribute("stroke", "white")
-            newline.setAttribute('stroke-dasharray', "2")
-            // console.log("***************from__coords****",from_coords[0])
-            // console.log("***************to_coords****",to_coords[1])
-            svg.appendChild(newline);
-
-            // also construct the lines into THREE math objects
-            mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
-                new THREE.Vector3(line[2], line[3], 0)));
+            drawLine(line);
         }
 
         // init the math vertices
@@ -163,6 +141,33 @@ function render2D(foldObj, reRender) {
         // vertixs array for rect min and max
         // loop over edges arrays for line
 
+    }
+
+    /**
+     * Draws the crease line onto the SVG
+     * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
+     */
+    function drawLine(line) {
+        line[0] = (line[0] + xOffset) * xScale;
+        line[1] = (line[1] + yOffset) * yScale;
+        line[2] = (line[2] + xOffset) * xScale;
+        line[3] = (line[3] + yOffset) * yScale;
+
+        let newline = document.createElementNS(svgns, "line");
+        newline.setAttribute('x1', line[0]);
+        newline.setAttribute('y1', line[1]);
+        newline.setAttribute('x2', line[2]);
+        newline.setAttribute('y2', line[3]);
+        newline.setAttribute('stroke-width', '2');
+        newline.setAttribute("stroke", "white")
+        newline.setAttribute('stroke-dasharray', "2")
+        // console.log("***************from__coords****",from_coords[0])
+        // console.log("***************to_coords****",to_coords[1])
+        svg.appendChild(newline);
+
+        // also construct the lines into THREE math objects
+        mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
+            new THREE.Vector3(line[2], line[3], 0)));
     }
 
     function initSVGListeners(reRender) {
@@ -255,6 +260,41 @@ function render2D(foldObj, reRender) {
         newline.setAttribute('stroke-dasharray', "2")
         newline.classList.add("selection");
         svg.appendChild(newline);
+    }
+
+    /**
+     * Creates a new edge on the shape
+     * @param {Vector3} v1 A THREE Vector3, the start of the line
+     * @param {Vector3} v2 the second Vector3, representing the end of the line
+     */
+    function createNewEdge(v1, v2) {
+        /**
+         * this will do the same as the drawLine function but will be able to take vectors
+         * directly from the existing mathVertices array. it might need to modify the foldObj, or it
+         * will just call drawLine again. Also needs to check if the lines cross any other, and
+         * make new vertices
+         */
+        let newEdge = new THREE.Line3(v1, v2);
+        let intersections = [];
+        for (let i = 0; i < mathLines.length; i++) {
+            let intersection = FOLD.geom.segmentIntersectSegment(
+                [
+                    [newEdge.start.x, newEdge.start.y],
+                    [newEdge.end.x, newEdge.end.y]
+                ],
+                [
+                    [mathLines[i].start.x, mathLines[i].start.y],
+                    [mathLines[i].end.x, mathLines[i].end.y]
+                ]
+            );
+            if (intersection) {
+                createNewVert(intersection);
+            }
+        }
+    }
+
+    function createNewVert(vert) {
+        console.log(vert);
     }
 
 
