@@ -6,29 +6,34 @@ const FOLD = require("fold");
 
 function main() {
     let fileInput = document.getElementById("fold_input");
+    let reRender = false;
     fileInput.addEventListener("change", event => {
         const fileList = event.target.files;
-        render(fileList[0]);
+        render(fileList[0], reRender);
+        reRender = true;
     })
 }
 
-function render(file) {
+function render(file, reRender) {
     let fReader = new FileReader();
     fReader.addEventListener("load", event => {
         let text = fReader.result;
         let foldObj = JSON.parse(text);
-        render2D(foldObj);
-        render3D(foldObj);
+        render2D(foldObj, reRender);
+        render3D(foldObj, reRender);
     });
     fReader.readAsText(file);
 }
 
-function render2D(foldObj) {
+function render2D(foldObj, reRender) {
 
+    const svgns = "http://www.w3.org/2000/svg";
     let creaseFrameExists = false;
+    let svg = document.getElementById("svg");
+    let mathLines = [];
 
     drawVertLine();
-
+    initSVGListeners(reRender);
 
     function drawVertLine(){
         // data
@@ -53,21 +58,20 @@ function render2D(foldObj) {
             edges_vertices = foldObj['edges_vertices'];
         }
 
-
-        const svgns = "http://www.w3.org/2000/svg";
         let newRect = document.createElementNS(svgns, "rect");
 
-              // draw rectangle
-              newRect.setAttribute("x", vertices_coords[0][0]);
-              newRect.setAttribute("y", vertices_coords[0][0]);
-              newRect.setAttribute("width", 800);
-              newRect.setAttribute("height", 600);
-              newRect.setAttribute("fill", "#5cceee");
-              newRect.setAttribute("stroke", "black");
-              newRect.setAttribute('stroke-width', '.2');
+        // draw rectangle
+        newRect.setAttribute("x", vertices_coords[0][0]);
+        newRect.setAttribute("y", vertices_coords[0][0]);
+        newRect.setAttribute("width", 800);
+        newRect.setAttribute("height", 600);
+        newRect.setAttribute("fill", "#5cceee");
+        newRect.setAttribute("stroke", "black");
+        newRect.setAttribute('stroke-width', '.2')
 
-              // append the new rectangle to the svg
-              svg.appendChild(newRect);
+        // append the new rectangle to the svg
+        svg.appendChild(newRect);
+        console.log(svg);
 
         // find line information to adjust and scale them to the viewport
         let [xOffset, yOffset] = [0, 0];
@@ -113,26 +117,36 @@ function render2D(foldObj) {
 
         // getting the max X and Y size of the viewbox
         let viewportDim = document.querySelector("svg").viewBox.baseVal;
-        console.log(viewportDim);
         let xScale = viewportDim["width"] / (maxX - minX);
         let yScale = viewportDim["height"] / (maxY - minY);
 
         // draw crease lines
         for (let i = 0; i < lines.length; i++) {
+
+
+            let line = lines[i];
+
+            line[0] = (line[0] + xOffset) * xScale;
+            line[1] = (line[1] + yOffset) * yScale;
+            line[2] = (line[2] + xOffset) * xScale;
+            line[3] = (line[3] + yOffset) * yScale;
+
             let newline = document.createElementNS(svgns, "line");
-            newline.setAttribute('x1', (lines[i][0] + xOffset) * xScale);
-            newline.setAttribute('y1', (lines[i][1] + yOffset) * yScale);
-            newline.setAttribute('x2', (lines[i][2] + xOffset) * xScale);
-            newline.setAttribute('y2', (lines[i][3] + yOffset) * yScale);
+            newline.setAttribute('x1', line[0]);
+            newline.setAttribute('y1', line[1]);
+            newline.setAttribute('x2', line[2]);
+            newline.setAttribute('y2', line[3]);
             newline.setAttribute('stroke-width', '2');
             newline.setAttribute("stroke", "white")
             newline.setAttribute('stroke-dasharray', "2")
             // console.log("***************from__coords****",from_coords[0])
             // console.log("***************to_coords****",to_coords[1])
             svg.appendChild(newline);
+
+            // also construct the lines into THREE math objects
+            mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
+                new THREE.Vector3(line[2], line[3], 0)));
         }
-
-
 
 
 
@@ -150,45 +164,86 @@ function render2D(foldObj) {
 
     }
 
+    function initSVGListeners(reRender) {
+        if (!reRender) {
+            svg.addEventListener("click", e => {
+                console.log("the SVG was clicked");
+                clickAPoint(e);
+            });
+        }
+    }
 
-      function findNearestVert(){
+    /**
+     * Handles the behavior upon clicking on the SVG
+     * @param {Object} event The click event from the listener
+     */
+    function clickAPoint(event) {
+        let x = event.offsetX;
+        let y = event.offsetY;
+        console.log("I registered a click at: " + x + ", " + y);
 
-          // loop through the vertices and calculate the distance between the vertex and where ever the user is
+        let clickPosition = new THREE.Vector3(x, y, 0);
+        let closestPoints = mathLines.map(line => {
+            console.log(line);
+            let p = new THREE.Vector3();
+            line.closestPointToPoint(clickPosition, true, p);
+            return p;
+        });
+        let pointDistances = closestPoints.map(point => point.distanceTo(clickPosition));
+        let min = 0;
+        for (let i = 0; i < pointDistances.length; i++) {
+            if (pointDistances[i] < pointDistances[min]) {
+                min = i;
+            }
+        }
+        let closestPoint = closestPoints[min];
 
-          const vertices_coords = foldObj['vertices_coords']
-          const edges_vertices = foldObj['edges_vertices']
+        let circle = document.createElementNS(svgns, "circle");
+        circle.setAttribute("cx", closestPoint.x);
+        circle.setAttribute("cy", closestPoint.y);
+        circle.setAttribute("r", 5);
+        svg.appendChild(circle);
+    }
 
 
-          for (const edge of edges_vertices) {
+    function findNearestVert(){
 
-              console.log('Looking at edge ', edge);
-              // x coordniate
-              const from_vertex_index = edge[0];
-              // y coordniate
-              const to_vertex_index = edge[1];
+        // loop through the vertices and calculate the distance between the vertex and where ever the user is
 
-              // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
-              // const from_coords = vertices_coords[from_vertex_index];
-              // const to_coords = vertices_coords[to_vertex_index];
-
-              // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
+        const vertices_coords = foldObj['vertices_coords']
+        const edges_vertices = foldObj['edges_vertices']
 
 
-              // draw line
+        for (const edge of edges_vertices) {
 
-              console.log(Math.hypot(edge[0],edge[1],24,10));
+            console.log('Looking at edge ', edge);
+            // x coordniate
+            const from_vertex_index = edge[0];
+            // y coordniate
+            const to_vertex_index = edge[1];
 
-          }
-      }
+            // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
+            // const from_coords = vertices_coords[from_vertex_index];
+            // const to_coords = vertices_coords[to_vertex_index];
+
+            // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
+
+
+            // draw line
+
+            console.log(Math.hypot(edge[0],edge[1],24,10));
+
+        }
+    }
 
 }
 
-function render3D(foldObj) {
+function render3D(foldObj, reRender) {
 
     let canvas, scene, camera, renderer;
 
     // the fold object that gets passed in
-    let rotationRadius = 10;
+    let rotationRadius = 5;
 
     // rotation in XZ plane
     let theta = 0;
@@ -196,14 +251,18 @@ function render3D(foldObj) {
     // rotation in a plane along Y axis
     let phi = Math.PI / 2;
 
+    // camera limits and settings
     let isCamRotating = false;
     let isCamPanning = false;
     let zoomLimit = 2;
     let zoomMax = 30;
+    let restrictionRangeY = 0.05;
     const sensitivityScale = 0.01;
+    const zoomSensitivity = 0.01;
     let origin = new THREE.Vector3(0, 0, 0);
 
     initRenderer();
+    init3DListeners(reRender);
     loadShapes();
     animate();
 
@@ -274,62 +333,68 @@ function render3D(foldObj) {
         // default to using the first shape as the center as there is no way to calc it w/ >1 shapes
         shapes[0].geometry.computeBoundingSphere();
         origin = shapes[0].geometry.boundingSphere.center; // the origin that the cam orbits around
+        rotationRadius = shapes[0].geometry.boundingSphere.radius * 1.7;
     }
 
-    // prevent right clicks from opening the context menu anywhere
-    document.addEventListener("contextmenu", e => {
-        e.preventDefault();
-    });
+    // stop loading repeat listeners, what do i do with the leftover 'lost' listeners?
+    function init3DListeners(reRender) {
+        // some listeners require access to the objects in this instance of the function
 
-    // when clicking into the canvas, start rotating
-    canvas.addEventListener("mousedown", e => {
-        if (e.button === 0) {
-            isCamRotating = true;
-        } else if (e.button === 2) {
-            isCamPanning = true;
-        }
-    });
-
-    // listen for mouse release on the whole page to prevent accidental sticky rotate
-    document.addEventListener("mouseup", e => {
-        if (isCamRotating || isCamPanning) {
-            isCamRotating = false;
-            isCamPanning = false;
-        }
-    });
-
-    let restrictionRangeY = 0.05;
-
-    // orbit the camera upon mouse movement in the canvas, pan if right clicked
-    canvas.addEventListener("mousemove", e => {
-        if (isCamRotating) {
-            theta -= degToRad(e.movementX);
-            let n = phi - degToRad(e.movementY);
-            if (n > Math.PI - restrictionRangeY) {
-                phi = Math.PI - restrictionRangeY;
-            } else if (n < restrictionRangeY) {
-                phi = restrictionRangeY;
-            } else {
-                phi = n;
+        // when clicking into the canvas, start rotating
+        canvas.addEventListener("mousedown", e => {
+            if (e.button === 0) {
+                isCamRotating = true;
+            } else if (e.button === 2) {
+                isCamPanning = true;
             }
-        } else if (isCamPanning) { // prevent both pan and rotate at same time
-            origin.setComponent(0, origin.x - (e.movementX * sensitivityScale)); // x axis movement
-            origin.setComponent(2, origin.z - (e.movementY * sensitivityScale));
-        }
-    });
+        });
 
-    // use scroll wheel to zoom
-    canvas.addEventListener("wheel", e => {
-        e.preventDefault();
-        let newZoom = rotationRadius + e.deltaY * 0.1;
-        if (newZoom < zoomLimit) {
-            rotationRadius = zoomLimit;
-        } else if (newZoom > zoomMax) {
-            rotationRadius = zoomMax;
-        } else {
-            rotationRadius = newZoom;
+        // listen for mouse release on the whole page to prevent accidental sticky rotate
+        document.addEventListener("mouseup", e => {
+            if (isCamRotating || isCamPanning) {
+                isCamRotating = false;
+                isCamPanning = false;
+            }
+        });
+
+        // orbit the camera upon mouse movement in the canvas, pan if right clicked
+        canvas.addEventListener("mousemove", e => {
+            if (isCamRotating) {
+                theta -= degToRad(e.movementX);
+                let n = phi - degToRad(e.movementY);
+                if (n > Math.PI - restrictionRangeY) {
+                    phi = Math.PI - restrictionRangeY;
+                } else if (n < restrictionRangeY) {
+                    phi = restrictionRangeY;
+                } else {
+                    phi = n;
+                }
+            } else if (isCamPanning) { // prevent both pan and rotate at same time
+                origin.setComponent(0, origin.x - (e.movementX * sensitivityScale)); // x axis movement
+                origin.setComponent(2, origin.z - (e.movementY * sensitivityScale));
+            }
+        });
+
+        // use scroll wheel to zoom
+        canvas.addEventListener("wheel", e => {
+            e.preventDefault();
+            let newZoom = rotationRadius + e.deltaY * zoomSensitivity;
+            if (newZoom < zoomLimit) {
+                rotationRadius = zoomLimit;
+            } else if (newZoom > zoomMax) {
+                rotationRadius = zoomMax;
+            } else {
+                rotationRadius = newZoom;
+            }
+        });
+
+        if (!reRender) {
+            // prevent right clicks from opening the context menu anywhere
+            document.addEventListener("contextmenu", e => {
+                e.preventDefault();
+            });
         }
-    });
+    }
 
     function animate() {
         requestAnimationFrame(animate);
