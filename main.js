@@ -28,7 +28,7 @@ function render(file, reRender) {
 function render2D(foldObj, reRender) {
 
     const svgns = "http://www.w3.org/2000/svg";
-    const vertexEpsilon = 10;
+    const vertexEpsilon = 20;
     const lineEpsilon = 10;
     let creaseFrameExists = false;
     let svg = document.getElementById("svg");
@@ -224,7 +224,7 @@ function render2D(foldObj, reRender) {
     }
 
     /**
-     * Handles the selected point and draws the corresponding selectinon to the SVG view
+     * Handles the selected point and draws the corresponding selection to the SVG view
      * @param {Vector3} point A THREE Vector3 representing a point that is selected on the SVG
      */
     function selectPoint(point) {
@@ -238,6 +238,10 @@ function render2D(foldObj, reRender) {
         svg.appendChild(circle);
     }
 
+    /**
+     * Handles selecting a line and draws a corresponding line selection onto the SVG view
+     * @param {Line3} line a THREE Line3 object that represents the line being selected
+     */
     function selectLine(line) {
         // TODO print
         console.log("A line was selected");

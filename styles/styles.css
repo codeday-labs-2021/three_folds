@@ -9,3 +9,7 @@
 canvas {
     background-color: black;
 }
+
+canvas, svg {
+    padding: 1%;
+}
