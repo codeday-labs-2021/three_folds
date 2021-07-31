@@ -1,8 +1,6 @@
 "use strict";
 
-// import * as FOLD from "external/fold.js";
 const FOLD = require("fold");
-// const THREE = require("three");
 
 function main() {
     let fileInput = document.getElementById("fold_input");
@@ -188,12 +186,10 @@ function render2D(foldObj) {
         console.log(mathLines);
         let x = event.offsetX;
         let y = event.offsetY;
-        // console.log("I registered a click at: " + x + ", " + y);
 
         let clickPosition = new THREE.Vector3(x, y, 0);
 
         let vertsDistances = mathVertices.map(vert => vert.distanceTo(clickPosition));
-        // console.log(vertsDistances);
         let vertSelected = false;
         let i = 0;
         while (!vertSelected && i <= vertsDistances.length) {
@@ -221,14 +217,6 @@ function render2D(foldObj) {
                 selectLine(closestLine);
             }
         }
-
-
-        // let circle = document.createElementNS(svgns, "circle");
-        // circle.setAttribute("cx", closestPoint.x);
-        // circle.setAttribute("cy", closestPoint.y);
-        // circle.setAttribute("r", 5);
-        // circle.classList.add("selection");
-        // svg.appendChild(circle);
     }
 
     /**
@@ -251,8 +239,6 @@ function render2D(foldObj) {
      * @param {Line3} line a THREE Line3 object that represents the line being selected
      */
     function selectLine(line) {
-        // TODO print
-        console.log("A line was selected");
         let newline = document.createElementNS(svgns, "line");
         newline.setAttribute('x1', line.start.x);
         newline.setAttribute('y1', line.start.y);
