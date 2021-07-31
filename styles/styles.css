@@ -1,15 +1,16 @@
 .flex-parent {
     display: flex;
+    justify-content: space-evenly;
 }
 
-.flex-child {
+/* .flex-child {
     flex: 1;
-}
+} */
 
 canvas {
     background-color: black;
 }
 
-canvas, svg {
+/* canvas, svg {
     padding: 1%;
-}
+} */

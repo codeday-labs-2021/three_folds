@@ -66,11 +66,13 @@ function render2D(foldObj) {
 
         let newRect = document.createElementNS(svgns, "rect");
 
+        let viewportDim = document.querySelector("svg").viewBox.baseVal;
+
         // draw rectangle
         newRect.setAttribute("x", vertices_coords[0][0]);
         newRect.setAttribute("y", vertices_coords[0][0]);
-        newRect.setAttribute("width", 800);
-        newRect.setAttribute("height", 600);
+        newRect.setAttribute("width", viewportDim["width"]);
+        newRect.setAttribute("height", viewportDim["height"]);
         newRect.setAttribute("fill", "#5cceee");
         newRect.setAttribute("stroke", "black");
         newRect.setAttribute('stroke-width', '.2')
@@ -121,7 +123,6 @@ function render2D(foldObj) {
         }
 
         // getting the max X and Y size of the viewbox
-        let viewportDim = document.querySelector("svg").viewBox.baseVal;
         let xScale = viewportDim["width"] / (maxX - minX);
         let yScale = viewportDim["height"] / (maxY - minY);
 
@@ -155,6 +156,8 @@ function render2D(foldObj) {
         line[2] = (line[2] + xOffset) * xScale;
         line[3] = (line[3] + yOffset) * yScale;
 
+        console.log(line);
+
         let newline = document.createElementNS(svgns, "line");
         newline.setAttribute('x1', line[0]);
         newline.setAttribute('y1', line[1]);
@@ -168,6 +171,7 @@ function render2D(foldObj) {
         svg.appendChild(newline);
 
         // also construct the lines into THREE math objects
+        console.log(line);
         mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
             new THREE.Vector3(line[2], line[3], 0)));
     }
@@ -183,9 +187,12 @@ function render2D(foldObj) {
      * @param {Object} event The click event from the listener
      */
     function clickAPoint(event) {
-        console.log(mathLines);
+        // console.log(mathLines);
         let x = event.offsetX;
         let y = event.offsetY;
+
+        console.log("click at", x, y);
+        console.log(mathVertices);
 
         let clickPosition = new THREE.Vector3(x, y, 0);
 
