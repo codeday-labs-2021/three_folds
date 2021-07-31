@@ -11,7 +11,11 @@ function main() {
         const fileList = event.target.files;
         render(fileList[0], reRender);
         reRender = true;
-    })
+    });
+
+    let l1 = [[0, 0], [0, 2]];
+    let l2 = [[-1, 1], [1, 1]];
+    console.log(FOLD.geom.segmentIntersectSegment(l1, l2));
 }
 
 function render(file, reRender) {
@@ -19,24 +23,24 @@ function render(file, reRender) {
     fReader.addEventListener("load", event => {
         let text = fReader.result;
         let foldObj = JSON.parse(text);
-        render2D(foldObj, reRender);
+        render2D(foldObj);
         render3D(foldObj, reRender);
     });
     fReader.readAsText(file);
 }
 
-function render2D(foldObj, reRender) {
+function render2D(foldObj) {
 
     const svgns = "http://www.w3.org/2000/svg";
     const vertexEpsilon = 20;
-    const lineEpsilon = 10;
+    const lineEpsilon = 15;
     let creaseFrameExists = false;
     let svg = document.getElementById("svg");
     let mathLines = [];
     let mathVertices = [];
 
     drawVertLine();
-    initSVGListeners(reRender);
+    initSVGListeners();
 
     function drawVertLine(){
         svg.innerHTML = "";
@@ -126,7 +130,7 @@ function render2D(foldObj, reRender) {
         // draw crease lines
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
-            drawLine(line);
+            drawLine(line, xOffset, xScale, yOffset, yScale);
         }
 
         // init the math vertices
@@ -147,7 +151,7 @@ function render2D(foldObj, reRender) {
      * Draws the crease line onto the SVG
      * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
      */
-    function drawLine(line) {
+    function drawLine(line, xOffset, xScale, yOffset, yScale) {
         line[0] = (line[0] + xOffset) * xScale;
         line[1] = (line[1] + yOffset) * yScale;
         line[2] = (line[2] + xOffset) * xScale;
@@ -170,12 +174,10 @@ function render2D(foldObj, reRender) {
             new THREE.Vector3(line[2], line[3], 0)));
     }
 
-    function initSVGListeners(reRender) {
-        if (!reRender) {
-            svg.addEventListener("click", e => {
-                clickAPoint(e);
-            });
-        }
+    function initSVGListeners() {
+        svg.parentNode.replaceChild(svg.cloneNode(true), svg);
+        svg = document.querySelector("svg");
+        svg.addEventListener("click", function clickEvent(event) {clickAPoint(event)});
     }
 
     /**
@@ -183,6 +185,7 @@ function render2D(foldObj, reRender) {
      * @param {Object} event The click event from the listener
      */
     function clickAPoint(event) {
+        console.log(mathLines);
         let x = event.offsetX;
         let y = event.offsetY;
         // console.log("I registered a click at: " + x + ", " + y);
@@ -277,6 +280,12 @@ function render2D(foldObj, reRender) {
         let newEdge = new THREE.Line3(v1, v2);
         let intersections = [];
         for (let i = 0; i < mathLines.length; i++) {
+            /**
+             * FOLD.geom.segmentIntersectSegment expects two line segments s1, s2, where each is
+             * an array of two points, where each point is an array of two values, x and y
+             * ex: s1=[[x1, y1], [x2, y2]], s2=[[x3, y3], [x4, y4]]
+             * and returns their intersection as an array with two values representing a point
+             */
             let intersection = FOLD.geom.segmentIntersectSegment(
                 [
                     [newEdge.start.x, newEdge.start.y],
@@ -294,6 +303,7 @@ function render2D(foldObj, reRender) {
     }
 
     function createNewVert(vert) {
+        // this will handle adding new vertices to the SVG and the data structures as well if needed
         console.log(vert);
     }
 
