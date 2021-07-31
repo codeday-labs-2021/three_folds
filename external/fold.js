@@ -381,6 +381,8 @@ convert.edges_vertices_to_edges_faces_edges = function(fold) {
     ];
   }
   ref1 = fold.faces_vertices;
+  // NOT PART OF ORIGINAL LIBRARY
+  fold.faces_edges = [];
   for (face in ref1) {
     vertices = ref1[face];
     face = parseInt(face);
@@ -1591,7 +1593,7 @@ geom.dot = function(a, b) {
 };
 
 geom.distsq = function(a, b) {
-  //# Returns the squared Euclidean distance between two vectors a and b having 
+  //# Returns the squared Euclidean distance between two vectors a and b having
   //# the same dimension.
   return geom.magsq(geom.sub(a, b));
 };
@@ -2254,8 +2256,8 @@ geom.above = function(ps, qs, n, eps = geom.EPS) {
 geom.separatingDirection2D = function(t1, t2, n, eps = geom.EPS) {
   var i, j, l, len, len1, len2, m, o, p, q, r, ref, sign, t;
   ref = [t1, t2];
-  //# If points are contained in a common plane with normal n and a separating 
-  //# direction exists, a direction perpendicular to some pair of points from 
+  //# If points are contained in a common plane with normal n and a separating
+  //# direction exists, a direction perpendicular to some pair of points from
   //# the same set is also a separating direction.
   for (l = 0, len = ref.length; l < len; l++) {
     t = ref[l];
@@ -2284,7 +2286,7 @@ geom.separatingDirection3D = function(t1, t2, eps = geom.EPS) {
   ref = [[t1, t2], [t2, t1]];
   //# If points are not contained in a common plane and a separating direction
   //# exists, a plane spanning two points from one set and one point from the
-  //# other set is a separating plane, with its normal a separating direction. 
+  //# other set is a separating plane, with its normal a separating direction.
   for (l = 0, len = ref.length; l < len; l++) {
     [x1, x2] = ref[l];
     for (o = 0, len1 = x1.length; o < len1; o++) {
@@ -2312,7 +2314,7 @@ geom.separatingDirection3D = function(t1, t2, eps = geom.EPS) {
 
 //#
 //# Hole Filling Methods
-//# 
+//#
 geom.circleCross = function(d, r1, r2) {
   var x, y;
   x = (d * d - r2 * r2 + r1 * r1) / d / 2;
@@ -2364,7 +2366,7 @@ oripa = exports;
 //# Based on src/oripa/geom/OriLine.java
 oripa.type2fold = {
   0: 'F', //# TYPE_NONE = flat
-  1: 'B', //# TYPE_CUT = boundary 
+  1: 'B', //# TYPE_CUT = boundary
   2: 'M', //# TYPE_RIDGE = mountain
   3: 'V' //# TYPE_VALLEY = valley
 };
