@@ -10,10 +10,6 @@ function main() {
         render(fileList[0], reRender);
         reRender = true;
     });
-
-    let l1 = [[0, 0], [0, 2]];
-    let l2 = [[-1, 1], [1, 1]];
-    console.log(FOLD.geom.segmentIntersectSegment(l1, l2));
 }
 
 function render(file, reRender) {
@@ -156,7 +152,6 @@ function render2D(foldObj) {
         line[2] = (line[2] + xOffset) * xScale;
         line[3] = (line[3] + yOffset) * yScale;
 
-        console.log(line);
 
         let newline = document.createElementNS(svgns, "line");
         newline.setAttribute('x1', line[0]);
@@ -171,7 +166,6 @@ function render2D(foldObj) {
         svg.appendChild(newline);
 
         // also construct the lines into THREE math objects
-        console.log(line);
         mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
             new THREE.Vector3(line[2], line[3], 0)));
     }
@@ -191,8 +185,6 @@ function render2D(foldObj) {
         let x = event.offsetX;
         let y = event.offsetY;
 
-        console.log("click at", x, y);
-        console.log(mathVertices);
 
         let clickPosition = new THREE.Vector3(x, y, 0);
 
@@ -231,8 +223,6 @@ function render2D(foldObj) {
      * @param {Vector3} point A THREE Vector3 representing a point that is selected on the SVG
      */
     function selectPoint(point) {
-        // TODO print
-        console.log("A point was selected");
         let circle = document.createElementNS(svgns, "circle");
         circle.setAttribute("cx", point.x);
         circle.setAttribute("cy", point.y);
