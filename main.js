@@ -31,6 +31,11 @@ function main() {
     let mathLines, mathVertices;
     let creaseFrameExists;
 
+    const selectedPoints = [];
+    const selectedLines = [];
+    const selectedSVGCircles = [];
+    const selectedSVGLines = [];
+
 
     function render2D(foldObj) {
 
@@ -198,7 +203,7 @@ function main() {
             let i = 0;
             while (!vertSelected && i <= vertsDistances.length) {
                 if (vertsDistances[i] < vertexEpsilon) {
-                    selectPoint(mathVertices[i]);
+                    selectPoint(i);
                     vertSelected = true;
                 }
                 i++;
@@ -216,9 +221,8 @@ function main() {
                         min = i;
                     }
                 }
-                let closestLine = mathLines[min];
                 if (pointDistances[min] < lineEpsilon) {
-                    selectLine(closestLine);
+                    selectLine(min);
                 }
             }
         }
@@ -227,30 +231,68 @@ function main() {
          * Handles the selected point and draws the corresponding selection to the SVG view
          * @param {Vector3} point A THREE Vector3 representing a point that is selected on the SVG
          */
-        function selectPoint(point) {
-            let circle = document.createElementNS(svgns, "circle");
-            circle.setAttribute("cx", point.x);
-            circle.setAttribute("cy", point.y);
-            circle.setAttribute("r", 5);
-            circle.classList.add("selection");
-            svg.appendChild(circle);
+        function selectPoint(index) {
+            if (selectedPoints.includes(index)) {
+                let toggleIndex = selectedPoints.indexOf(index);
+                selectedPoints.splice(toggleIndex, 1);
+                selectedSVGCircles[toggleIndex].remove();
+                selectedSVGCircles.splice(toggleIndex, 1);
+            } else {
+                let point = mathVertices[index];
+                let circle = document.createElementNS(svgns, "circle");
+                circle.setAttribute("cx", point.x);
+                circle.setAttribute("cy", point.y);
+                circle.setAttribute("r", 5);
+                circle.classList.add("selection");
+                svg.appendChild(circle);
+
+                selectedSVGCircles.push(circle);
+                selectedPoints.push(index);
+
+                // only allow to select two points at a time, implement like queue
+                if (selectedSVGCircles.length > 2) {
+                    selectedSVGCircles.shift().remove();
+                }
+                if (selectedPoints.length > 2) {
+                    selectedPoints.shift();
+                }
+            }
         }
 
         /**
          * Handles selecting a line and draws a corresponding line selection onto the SVG view
          * @param {Line3} line a THREE Line3 object that represents the line being selected
          */
-        function selectLine(line) {
-            let newline = document.createElementNS(svgns, "line");
-            newline.setAttribute('x1', line.start.x);
-            newline.setAttribute('y1', line.start.y);
-            newline.setAttribute('x2', line.end.x);
-            newline.setAttribute('y2', line.end.y);
-            newline.setAttribute('stroke-width', '5');
-            newline.setAttribute("stroke", "black")
-            newline.setAttribute('stroke-dasharray', "2")
-            newline.classList.add("selection");
-            svg.appendChild(newline);
+        function selectLine(index) {
+            if (selectedLines.includes(index)) {
+                let toggleIndex = selectedLines.indexOf(index);
+                selectedLines.splice(toggleIndex, 1);
+                selectedSVGLines[toggleIndex].remove();
+                selectedSVGLines.splice(toggleIndex, 1);
+            } else {
+                let line = mathLines[index];
+                let newline = document.createElementNS(svgns, "line");
+                newline.setAttribute('x1', line.start.x);
+                newline.setAttribute('y1', line.start.y);
+                newline.setAttribute('x2', line.end.x);
+                newline.setAttribute('y2', line.end.y);
+                newline.setAttribute('stroke-width', '5');
+                newline.setAttribute("stroke", "black")
+                newline.setAttribute('stroke-dasharray', "2")
+                newline.classList.add("selection");
+                svg.appendChild(newline);
+
+                selectedSVGLines.push(newline);
+                selectedLines.push(index);
+
+                // only allow to select two lines at a time
+                if (selectedSVGLines.length > 2) {
+                    selectedSVGLines.shift().remove();
+                }
+                if (selectedLines.length > 2) {
+                    selectedLines.shift();
+                }
+            }
         }
 
         /**
@@ -330,7 +372,6 @@ function main() {
 
     let canvas, scene, camera, renderer;
 
-    // the fold object that gets passed in
     let rotationRadius = 5;
 
     // rotation in XZ plane
@@ -342,9 +383,9 @@ function main() {
     // camera limits and settings
     let isCamRotating = false;
     let isCamPanning = false;
-    let zoomLimit = 2;
-    let zoomMax = 30;
-    let restrictionRangeY = 0.05;
+    const zoomLimit = 2;
+    const zoomMax = 30;
+    const restrictionRangeY = 0.05;
     const sensitivityScale = 0.01;
     const zoomSensitivity = 0.01;
     let origin = new THREE.Vector3(0, 0, 0);
