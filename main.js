@@ -28,23 +28,27 @@ function main() {
     const vertexEpsilon = 20;
     const lineEpsilon = 15;
     let svg = document.getElementById("svg");
-    let mathLines, mathVertices;
+    const mathLines = [];
+    const mathVertices = [];
     let creaseFrameExists;
 
+    // NOTE selected points and lines will store indices of corresponding in mathVerts and mathLines
     const selectedPoints = [];
     const selectedLines = [];
     const selectedSVGCircles = [];
     const selectedSVGLines = [];
 
+    let xOffset, yOffset;
+    let xScale, yScale;
 
+    // SVG render and calculating the scaling from FOLD to the SVG
     function render2D(foldObj) {
 
-        let mathLines = [];
-        let mathVertices = [];
-        let creaseFrameExists = false;
+        creaseFrameExists = false;
 
         drawVertLine();
         initSVGListeners();
+        initButtonListeners();
 
         function drawVertLine(){
             svg.innerHTML = "";
@@ -87,7 +91,7 @@ function main() {
             svg.appendChild(newRect);
 
             // find line information to adjust and scale them to the viewport
-            let [xOffset, yOffset] = [0, 0];
+            [xOffset, yOffset] = [0, 0];
             let [minX, maxX] = [Infinity, -Infinity];
             let [minY, maxY] = [Infinity, -Infinity];
             let lines = [];
@@ -129,8 +133,8 @@ function main() {
             }
 
             // getting the max X and Y size of the viewbox
-            let xScale = viewportDim["width"] / (maxX - minX);
-            let yScale = viewportDim["height"] / (maxY - minY);
+            xScale = viewportDim["width"] / (maxX - minX);
+            yScale = viewportDim["height"] / (maxY - minY);
 
             // draw crease lines
             for (let i = 0; i < lines.length; i++) {
@@ -152,38 +156,20 @@ function main() {
 
         }
 
-        /**
-         * Draws the crease line onto the SVG
-         * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
-         */
-        function drawLine(line, xOffset, xScale, yOffset, yScale) {
-            line[0] = (line[0] + xOffset) * xScale;
-            line[1] = (line[1] + yOffset) * yScale;
-            line[2] = (line[2] + xOffset) * xScale;
-            line[3] = (line[3] + yOffset) * yScale;
-
-
-            let newline = document.createElementNS(svgns, "line");
-            newline.setAttribute('x1', line[0]);
-            newline.setAttribute('y1', line[1]);
-            newline.setAttribute('x2', line[2]);
-            newline.setAttribute('y2', line[3]);
-            newline.setAttribute('stroke-width', '2');
-            newline.setAttribute("stroke", "white")
-            newline.setAttribute('stroke-dasharray', "2")
-            // console.log("***************from__coords****",from_coords[0])
-            // console.log("***************to_coords****",to_coords[1])
-            svg.appendChild(newline);
-
-            // also construct the lines into THREE math objects
-            mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
-                new THREE.Vector3(line[2], line[3], 0)));
-        }
-
         function initSVGListeners() {
             svg.parentNode.replaceChild(svg.cloneNode(true), svg);
             svg = document.querySelector("svg");
             svg.addEventListener("click", function clickEvent(event) {clickAPoint(event)});
+        }
+
+        function initButtonListeners() {
+            document.getElementById("huzita1").addEventListener("click", foldAxiom1);
+            document.getElementById("huzita2").addEventListener("click", foldAxiom2);
+            document.getElementById("huzita3").addEventListener("click", foldAxiom3);
+            document.getElementById("huzita4").addEventListener("click", foldAxiom4);
+            document.getElementById("huzita5").addEventListener("click", foldAxiom5);
+            document.getElementById("huzita6").addEventListener("click", foldAxiom6);
+            document.getElementById("huzita7").addEventListener("click", foldAxiom7);
         }
 
         /**
@@ -257,6 +243,7 @@ function main() {
                     selectedPoints.shift();
                 }
             }
+            changeSelection();
         }
 
         /**
@@ -293,50 +280,8 @@ function main() {
                     selectedLines.shift();
                 }
             }
+            changeSelection();
         }
-
-        /**
-         * Creates a new edge on the shape
-         * @param {Vector3} v1 A THREE Vector3, the start of the line
-         * @param {Vector3} v2 the second Vector3, representing the end of the line
-         */
-        function createNewEdge(v1, v2) {
-            /**
-             * this will do the same as the drawLine function but will be able to take vectors
-             * directly from the existing mathVertices array. it might need to modify the foldObj, or it
-             * will just call drawLine again. Also needs to check if the lines cross any other, and
-             * make new vertices
-             */
-            let newEdge = new THREE.Line3(v1, v2);
-            let intersections = [];
-            for (let i = 0; i < mathLines.length; i++) {
-                /**
-                 * FOLD.geom.segmentIntersectSegment expects two line segments s1, s2, where each is
-                 * an array of two points, where each point is an array of two values, x and y
-                 * ex: s1=[[x1, y1], [x2, y2]], s2=[[x3, y3], [x4, y4]]
-                 * and returns their intersection as an array with two values representing a point
-                 */
-                let intersection = FOLD.geom.segmentIntersectSegment(
-                    [
-                        [newEdge.start.x, newEdge.start.y],
-                        [newEdge.end.x, newEdge.end.y]
-                    ],
-                    [
-                        [mathLines[i].start.x, mathLines[i].start.y],
-                        [mathLines[i].end.x, mathLines[i].end.y]
-                    ]
-                );
-                if (intersection) {
-                    createNewVert(intersection);
-                }
-            }
-        }
-
-        function createNewVert(vert) {
-            // this will handle adding new vertices to the SVG and the data structures as well if needed
-            console.log(vert);
-        }
-
 
         function findNearestVert(){
 
@@ -370,6 +315,34 @@ function main() {
 
     }
 
+    /**
+         * Draws the crease line onto the SVG
+         * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
+         */
+     function drawLine(line, xOffset, xScale, yOffset, yScale) {
+        line[0] = (line[0] + xOffset) * xScale;
+        line[1] = (line[1] + yOffset) * yScale;
+        line[2] = (line[2] + xOffset) * xScale;
+        line[3] = (line[3] + yOffset) * yScale;
+
+
+        let newline = document.createElementNS(svgns, "line");
+        newline.setAttribute('x1', line[0]);
+        newline.setAttribute('y1', line[1]);
+        newline.setAttribute('x2', line[2]);
+        newline.setAttribute('y2', line[3]);
+        newline.setAttribute('stroke-width', '2');
+        newline.setAttribute("stroke", "white")
+        newline.setAttribute('stroke-dasharray', "2")
+        // console.log("***************from__coords****",from_coords[0])
+        // console.log("***************to_coords****",to_coords[1])
+        svg.appendChild(newline);
+
+        // also construct the lines into THREE math objects
+        mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
+            new THREE.Vector3(line[2], line[3], 0)));
+    }
+
     let canvas, scene, camera, renderer;
 
     let rotationRadius = 5;
@@ -390,7 +363,7 @@ function main() {
     const zoomSensitivity = 0.01;
     let origin = new THREE.Vector3(0, 0, 0);
 
-
+    // handle the main 3D rendering
     function render3D(foldObj, reRender) {
 
 
@@ -687,6 +660,175 @@ function main() {
             }
             return outArray;
         }
+    }
+
+
+    const huzitaOptions = [
+        {p:2, l:0},
+        {p:2, l:0},
+        {p:0, l:2},
+        {p:1, l:1},
+        {p:2, l:1},
+        {p:2, l:2},
+        {p:1, l:2}
+    ]
+    const buttons = [];
+    for (let i = 0; i < huzitaOptions.length; i++) {
+        buttons.push(document.getElementById(`huzita${i+1}`));
+    }
+
+    /**
+         * Creates a new edge on the shape
+         * @param {Vector3} v1 A THREE Vector3, the start of the line
+         * @param {Vector3} v2 the second Vector3, representing the end of the line
+         */
+     function createNewEdge(v1, v2) {
+        /**
+         * this will do the same as the drawLine function but will be able to take vectors
+         * directly from the existing mathVertices array. it might need to modify the foldObj, or it
+         * will just call drawLine again. Also needs to check if the lines cross any other, and
+         * make new vertices
+         */
+        let newEdge = new THREE.Line3(v1, v2);
+        drawLine(
+            [newEdge.start.x, newEdge.start.y, newEdge.end.x, newEdge.end.y],
+            0,
+            1,
+            0,
+            1
+        );
+        // let intersections = [];
+        for (let i = 0; i < mathLines.length; i++) {
+            /**
+             * FOLD.geom.segmentIntersectSegment expects two line segments s1, s2, where each is
+             * an array of two points, where each point is an array of two values, x and y
+             * ex: s1=[[x1, y1], [x2, y2]], s2=[[x3, y3], [x4, y4]]
+             * and returns their intersection as an array with two values representing a point
+             */
+            let intersection = FOLD.geom.segmentIntersectSegment(
+                [
+                    [newEdge.start.x, newEdge.start.y],
+                    [newEdge.end.x, newEdge.end.y]
+                ],
+                [
+                    [mathLines[i].start.x, mathLines[i].start.y],
+                    [mathLines[i].end.x, mathLines[i].end.y]
+                ]
+            );
+            if (intersection) {
+                createNewVert(new THREE.Vector3(intersection[0], intersection[1], 0));
+            }
+        }
+    }
+
+    function createNewVert(vert) {
+        // this will handle adding new vertices to the SVG and the data structures as well if needed
+        // console.log(vert);
+        if (!mathVertices.some(v => v.equals(vert))) {
+            mathVertices.push(vert);
+        }
+    }
+
+
+    /**
+     * Function checks all collisions of a long line with the existing lines, returning an array
+     * with all the intersections.
+     * @param {Vector3} origin A THREE vector representing the starting point of the line to check
+     * @param {Vector3} vector A THREE vector representing the direction to check in
+     * @param {Number} distance How far forward and backwards to check
+     * @returns {Array} an array of all the points that the line intersected
+     */
+    function lineAllCollisions(origin, vector, distance=2000) {
+        vector.normalize();
+        let lineStart = [origin.x - (vector.x * distance), origin.y - (vector.y * distance)];
+        let lineEnd = [origin.x + (vector.x * distance), origin.y + (vector.y * distance)];
+        // console.log(lineStart, lineEnd);
+        let intersections = [];
+
+        for (let i = 0; i < mathLines.length; i++) {
+            let interSectPt = FOLD.geom.segmentIntersectSegment([lineStart, lineEnd], [
+                [mathLines[i].start.x, mathLines[i].start.y],
+                [mathLines[i].end.x, mathLines[i].end.y]
+            ])
+            if (interSectPt) {
+                intersections.push(interSectPt);
+            }
+        }
+        return intersections;
+    }
+
+    // to be called whenever a change is made to selected, updates the buttons to available options
+    function changeSelection() {
+        let np = selectedPoints.length;
+        let nl = selectedLines.length;
+        for (let i = 0; i < buttons.length; i++) {
+            if (huzitaOptions[i].p === np && huzitaOptions[i].l === nl) {
+                buttons[i].disabled = false;
+            } else {
+                buttons[i].disabled = true;
+            }
+        }
+    }
+
+    function foldAxiom1() {
+        createNewEdge(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]]);
+    }
+
+    function foldAxiom2() {
+        console.log("huzita2");
+        let bisector = new THREE.Vector3();
+        let lineBetween = new THREE.Line3(mathVertices[selectedPoints[0]],
+            mathVertices[selectedPoints[1]]);
+        // console.log(lineBetween);
+        let pointDirection = new THREE.Vector3();
+        lineBetween.delta(pointDirection);
+        let origin = new THREE.Vector3();
+        lineBetween.getCenter(origin);
+        bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
+
+        // console.log(origin, bisector);
+
+        let intersections = lineAllCollisions(origin, bisector);
+        console.log(intersections);
+        let mindex = 0;
+        let maxdex = 0;
+        for (let i = 0; i < intersections.length; i++) {
+            if (intersections[i][0] < intersections[mindex][0]) {
+                mindex = i;
+            } else if (intersections[i][1] < intersections[mindex][1]) {
+                mindex = i;
+            }
+            if (intersections[i][0] > intersections[maxdex][0]) {
+                maxdex = i;
+            } else if (intersections[i][1] > intersections[maxdex][1]) {
+                maxdex = i;
+            }
+        }
+
+        // console.log(mindex);
+
+        createNewEdge(new THREE.Vector3(intersections[mindex][0], intersections[mindex][1], 0),
+            new THREE.Vector3(intersections[maxdex][0], intersections[maxdex][1], 0));
+    }
+
+    function foldAxiom3() {
+        console.warn("Axiom 3 not implemented");
+    }
+
+    function foldAxiom4() {
+        console.warn("Axiom 4 not implemented");
+    }
+
+    function foldAxiom5() {
+        console.warn("Axiom 5 not implemented");
+    }
+
+    function foldAxiom6() {
+        console.warn("Axiom 6 not implemented");
+    }
+
+    function foldAxiom7() {
+        console.warn("Axiom 7 not implemented");
     }
 }
 

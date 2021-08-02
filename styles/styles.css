@@ -11,6 +11,10 @@ canvas {
     background-color: black;
 }
 
+#btn_container {
+    max-width: min-content;
+}
+
 /* canvas, svg {
     padding: 1%;
 } */
