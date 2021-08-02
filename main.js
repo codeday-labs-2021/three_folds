@@ -775,21 +775,16 @@ function main() {
     }
 
     function foldAxiom2() {
-        console.log("huzita2");
         let bisector = new THREE.Vector3();
         let lineBetween = new THREE.Line3(mathVertices[selectedPoints[0]],
             mathVertices[selectedPoints[1]]);
-        // console.log(lineBetween);
         let pointDirection = new THREE.Vector3();
         lineBetween.delta(pointDirection);
         let origin = new THREE.Vector3();
         lineBetween.getCenter(origin);
         bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
 
-        // console.log(origin, bisector);
-
         let intersections = lineAllCollisions(origin, bisector);
-        console.log(intersections);
         let mindex = 0;
         let maxdex = 0;
         for (let i = 0; i < intersections.length; i++) {
@@ -804,8 +799,6 @@ function main() {
                 maxdex = i;
             }
         }
-
-        // console.log(mindex);
 
         createNewEdge(new THREE.Vector3(intersections[mindex][0], intersections[mindex][1], 0),
             new THREE.Vector3(intersections[maxdex][0], intersections[maxdex][1], 0));
