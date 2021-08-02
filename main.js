@@ -316,9 +316,9 @@ function main() {
     }
 
     /**
-         * Draws the crease line onto the SVG
-         * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
-         */
+     * Draws the crease line onto the SVG
+     * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
+     */
      function drawLine(line, xOffset, xScale, yOffset, yScale) {
         line[0] = (line[0] + xOffset) * xScale;
         line[1] = (line[1] + yOffset) * yScale;
@@ -678,10 +678,10 @@ function main() {
     }
 
     /**
-         * Creates a new edge on the shape
-         * @param {Vector3} v1 A THREE Vector3, the start of the line
-         * @param {Vector3} v2 the second Vector3, representing the end of the line
-         */
+     * Creates a new edge on the shape
+     * @param {Vector3} v1 A THREE Vector3, the start of the line
+     * @param {Vector3} v2 the second Vector3, representing the end of the line
+     */
      function createNewEdge(v1, v2) {
         /**
          * this will do the same as the drawLine function but will be able to take vectors
@@ -721,6 +721,7 @@ function main() {
         }
     }
 
+    // creates a new vertice given a Vector3 if there isn't a vertex already there
     function createNewVert(vert) {
         // this will handle adding new vertices to the SVG and the data structures as well if needed
         // console.log(vert);
