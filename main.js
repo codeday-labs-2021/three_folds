@@ -51,6 +51,8 @@ function main() {
         initButtonListeners();
 
         function drawVertLine(){
+            mathLines.length = 0;
+            mathVertices.length = 0;
             svg.innerHTML = "";
             // data
             let frame = foldObj["file_frames"];
@@ -71,24 +73,13 @@ function main() {
             } else {
                 FOLD.convert.flatFoldedGeometry(foldObj);
                 vertices_coords = foldObj["vertices_flatFoldCoords"];
+                console.log(vertices_coords);
                 edges_vertices = foldObj['edges_vertices'];
             }
 
             let newRect = document.createElementNS(svgns, "rect");
 
             let viewportDim = document.querySelector("svg").viewBox.baseVal;
-
-            // draw rectangle
-            newRect.setAttribute("x", vertices_coords[0][0]);
-            newRect.setAttribute("y", vertices_coords[0][0]);
-            newRect.setAttribute("width", viewportDim["width"]);
-            newRect.setAttribute("height", viewportDim["height"]);
-            newRect.setAttribute("fill", "#5cceee");
-            newRect.setAttribute("stroke", "black");
-            newRect.setAttribute('stroke-width', '.2')
-
-            // append the new rectangle to the svg
-            svg.appendChild(newRect);
 
             // find line information to adjust and scale them to the viewport
             [xOffset, yOffset] = [0, 0];
@@ -136,6 +127,20 @@ function main() {
             xScale = viewportDim["width"] / (maxX - minX);
             yScale = viewportDim["height"] / (maxY - minY);
 
+            // draw the base rectangle
+            console.log(vertices_coords[0][0], vertices_coords[0][1]);
+            newRect.setAttribute("x", (minX + xOffset) * xScale);
+            newRect.setAttribute("y", (minY + yOffset) * yScale);
+            console.log(viewportDim["width"], viewportDim["height"]);
+            newRect.setAttribute("width", viewportDim["width"]);
+            newRect.setAttribute("height", viewportDim["height"]);
+            newRect.setAttribute("fill", "#5cceee");
+            newRect.setAttribute("stroke", "black");
+            newRect.setAttribute('stroke-width', '.2')
+
+            // append the new rectangle to the svg
+            svg.appendChild(newRect);
+
             // draw crease lines
             for (let i = 0; i < lines.length; i++) {
                 let line = lines[i];
@@ -180,6 +185,7 @@ function main() {
             // console.log(mathLines);
             let x = event.offsetX;
             let y = event.offsetY;
+            console.log(x, y);
 
 
             let clickPosition = new THREE.Vector3(x, y, 0);
@@ -282,37 +288,6 @@ function main() {
             }
             changeSelection();
         }
-
-        function findNearestVert(){
-
-            // loop through the vertices and calculate the distance between the vertex and where ever the user is
-
-            const vertices_coords = foldObj['vertices_coords']
-            const edges_vertices = foldObj['edges_vertices']
-
-
-            for (const edge of edges_vertices) {
-
-                console.log('Looking at edge ', edge);
-                // x coordniate
-                const from_vertex_index = edge[0];
-                // y coordniate
-                const to_vertex_index = edge[1];
-
-                // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
-                // const from_coords = vertices_coords[from_vertex_index];
-                // const to_coords = vertices_coords[to_vertex_index];
-
-                // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
-
-
-                // draw line
-
-                console.log(Math.hypot(edge[0],edge[1],24,10));
-
-            }
-        }
-
     }
 
     /**
@@ -356,10 +331,10 @@ function main() {
     // camera limits and settings
     let isCamRotating = false;
     let isCamPanning = false;
-    const zoomLimit = 2;
+    const zoomLimit = 1;
     const zoomMax = 30;
     const restrictionRangeY = 0.05;
-    const sensitivityScale = 0.01;
+    const sensitivityScale = 0.0025;
     const zoomSensitivity = 0.01;
     let origin = new THREE.Vector3(0, 0, 0);
 
@@ -532,7 +507,7 @@ function main() {
                 }
 
                 // concatenating an empty array is a bit of a hack, bascially just squish the array
-                let vertsArray = deepArrayConcat(new Array(), vertex_coords);
+                let vertsArray = vertex_coords.flat(Infinity);
                 vertsArray = mathCoordConversion(vertsArray);
                 const vertices = new Float32Array(vertsArray);
 
@@ -540,7 +515,7 @@ function main() {
                 if (faces_vertices.some(el => el.length > 3)) {
                     faces_vertices = polygonToTri(faces_vertices);
                 }
-                triangleGeometry.setIndex(deepArrayConcat(new Array(), faces_vertices));
+                triangleGeometry.setIndex(faces_vertices.flat(Infinity));
                 triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
 
                 let plane = new THREE.Mesh(triangleGeometry,
@@ -583,32 +558,6 @@ function main() {
         }
 
         /**
-         * Helper function to cancatenate two arrays even if they have nested arrays inside
-         * @param {Array} array1 The array to be concatenated to
-         * @param {Array} array2 The array to concatenate onto array1
-         * @returns {Array} The result of deep concatenation
-         */
-        function deepArrayConcat(array1, array2) {
-            // TODO: handle in more graceful manner
-            if (!array2) {
-                alert("Something went wrong with coordinate arrays");
-            }
-            if (array2.some(el => Array.isArray(el))) {
-                array2.forEach(element => {
-                    if (Array.isArray(element)) {
-                        array1 = deepArrayConcat(array1, element);
-                    } else {
-                        array1 = array1.concat(element);
-                    }
-                });
-                return array1;
-            } else {
-                array1 = array1.concat(array2);
-                return array1;
-            }
-        }
-
-        /**
          * Function to split an array of indexed vertices as faces into triangles if they aren't already
          * @param {Array} array A list of faces made by referencing indexed vertices
          * @returns {Array} The original array modified to have many triangles instead of polygons
@@ -644,6 +593,7 @@ function main() {
          * Helper function to convert from XYZ (FOLD) to XZY (THREE.js) and possibly back as well. Used
          * on arrays of values every 3 representing one point, like after calling deepArrayConcat() on
          * the vertices from FOLD
+         * TODO check if this is really necessary
          * @param {Array} coordsArray An array of coordinates where every 3 values is one point
          * @returns A converted array where the second and third values of each coord are swapped
          */
