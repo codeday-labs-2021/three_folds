@@ -167,13 +167,24 @@ function main() {
         }
 
         function initButtonListeners() {
-            document.getElementById("huzita1").addEventListener("click", foldAxiom1);
-            document.getElementById("huzita2").addEventListener("click", foldAxiom2);
-            document.getElementById("huzita3").addEventListener("click", foldAxiom3);
-            document.getElementById("huzita4").addEventListener("click", foldAxiom4);
+            document.getElementById("huzita1").addEventListener("click", () => {
+                foldAxiom1(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]])});
+
+            document.getElementById("huzita2").addEventListener("click", () => {
+                foldAxiom2(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]])});
+
+            document.getElementById("huzita3").addEventListener("click", () => {
+                foldAxiom3(mathLines[selectedLines[0]], mathLines[selectedLines[1]])});
+
+            document.getElementById("huzita4").addEventListener("click", () => {
+                foldAxiom4(mathVertices[selectedPoints[0]], mathLines[selectedLines[0]])});
+
             document.getElementById("huzita5").addEventListener("click", foldAxiom5);
             document.getElementById("huzita6").addEventListener("click", foldAxiom6);
-            document.getElementById("huzita7").addEventListener("click", foldAxiom7);
+
+            document.getElementById("huzita7").addEventListener("click", () => {
+                foldAxiom7(mathVertices[selectedPoints[0]],
+                mathLines[selectedLines[0]], mathLines[selectedLines[1]])});
         }
 
         /**
@@ -743,15 +754,14 @@ function main() {
     }
 
     // create a new edge using the two points selected
-    function foldAxiom1() {
-        createNewEdge(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]]);
+    function foldAxiom1(p1, p2) {
+        createNewEdge(p1, p2);
     }
 
     // bisect the line b/w the two selected points and use orthogonal line to make the crease
-    function foldAxiom2() {
+    function foldAxiom2(p1, p2) {
         let bisector = new THREE.Vector3();
-        let lineBetween = new THREE.Line3(mathVertices[selectedPoints[0]],
-            mathVertices[selectedPoints[1]]);
+        let lineBetween = new THREE.Line3(p1, p2);
         let pointDirection = new THREE.Vector3();
         lineBetween.delta(pointDirection);
         let origin = new THREE.Vector3();
@@ -764,15 +774,13 @@ function main() {
     }
 
     // find bisector for the two lines, then intersection point, take this as the crease
-    function foldAxiom3() {
-        let line1 = mathLines[selectedLines[0]];
-        let line2 = mathLines[selectedLines[1]];
+    function foldAxiom3(l1, l2) {
         // find the direction of the bisecting line
         let bisector = new THREE.Vector3();
         let dir1 = new THREE.Vector3();
-        line1.delta(dir1);
+        l1.delta(dir1);
         let dir2 = new THREE.Vector3();
-        line2.delta(dir2);
+        l2.delta(dir2);
 
         // we need the two vectors to be pointing in the same direction
         if (dir1.angleTo(dir2) > (Math.PI / 2)) {
@@ -782,19 +790,19 @@ function main() {
 
         // find the origin point where the lines intersect
         let origin = FOLD.geom.segmentIntersectSegment([
-                [line1.start.x - (dir1 * 1000), line1.start.y - (dir1 * 1000)],
-                [line1.end.x + (dir1 * 1000), line1.end.y + (dir1 * 1000)]
+                [l1.start.x - (dir1 * 1000), l1.start.y - (dir1 * 1000)],
+                [l1.end.x + (dir1 * 1000), l1.end.y + (dir1 * 1000)]
             ],
             [
-                [line2.start.x - (dir2 * 1000), line2.start.y - (dir2 * 1000)],
-                [line2.end.x + (dir2 * 1000), line2.end.y + (dir2 * 1000)]
+                [l2.start.x - (dir2 * 1000), l2.start.y - (dir2 * 1000)],
+                [l2.end.x + (dir2 * 1000), l2.end.y + (dir2 * 1000)]
             ]
         );
         let newVerts;
         if (!origin) {
             // scuffed way to get a point inbetween the two selected lines if parallel
             origin = new THREE.Vector3();
-            (new THREE.Line3(line1.start, line2.start)).getCenter(origin);
+            (new THREE.Line3(l1.start, l2.start)).getCenter(origin);
         }
         newVerts = findLineLimits(origin, bisector);
         console.log(newVerts);
@@ -802,9 +810,7 @@ function main() {
 
     }
 
-    function foldAxiom4() {
-        let p1 = mathVertices[selectedPoints[0]];
-        let l1 = mathLines[selectedLines[0]];
+    function foldAxiom4(p1, l1) {
         let foldDir = new THREE.Vector3();
 
         let lineDir = new THREE.Vector3();
@@ -823,11 +829,25 @@ function main() {
         console.warn("Axiom 6 not implemented");
     }
 
-    function foldAxiom7() {
-        console.warn("Axiom 7 not implemented");
+    function foldAxiom7(p1, l1, l2) {
+        let lineTwoDir = new THREE.Vector3();
+        l2.delta(lineTwoDir);
+        console.log(p1, l1, l2);
+        let pointOnLine = FOLD.geom.segmentIntersectSegment(
+            [
+                [p1.x - (lineTwoDir.x * 2000), p1.y - (lineTwoDir.y * 2000)],
+                [p1.x + (lineTwoDir.x * 2000), p1.y + (lineTwoDir.y * 2000)]
+            ],
+            [
+                [l1.start.x, l1.start.y],
+                [l1.end.x, l1.end.y]
+            ]
+        );
+        console.log(pointOnLine);
+        foldAxiom2(p1, new THREE.Vector3(pointOnLine[0], pointOnLine[1], 0));
     }
 
-    function round(num, eps=0.001) {
+    function round(num, eps = 0.001) {
         let roundUp = (Math.ceil(num) - num) < eps;
         let roundDown = (num - Math.floor(num)) < eps;
         if (roundUp || roundDown) {
