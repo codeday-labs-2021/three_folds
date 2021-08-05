@@ -46,13 +46,18 @@ function main() {
 
         creaseFrameExists = false;
 
+        mathLines.length = 0;
+        mathVertices.length = 0;
+        selectedPoints.length = 0;
+        selectedLines.length = 0;
+        selectedSVGCircles.length = 0;
+        selectedSVGLines.length = 0;
+
         drawVertLine();
         initSVGListeners();
         initButtonListeners();
 
         function drawVertLine(){
-            mathLines.length = 0;
-            mathVertices.length = 0;
             svg.innerHTML = "";
             // data
             let frame = foldObj["file_frames"];
@@ -615,33 +620,35 @@ function main() {
          * make new vertices
          */
         let newEdge = new THREE.Line3(v1, v2);
-        drawLine(
-            [newEdge.start.x, newEdge.start.y, newEdge.end.x, newEdge.end.y],
-            0,
-            1,
-            0,
-            1
-        );
-        // let intersections = [];
-        for (let i = 0; i < mathLines.length; i++) {
-            /**
-             * FOLD.geom.segmentIntersectSegment expects two line segments s1, s2, where each is
-             * an array of two points, where each point is an array of two values, x and y
-             * ex: s1=[[x1, y1], [x2, y2]], s2=[[x3, y3], [x4, y4]]
-             * and returns their intersection as an array with two values representing a point
-             */
-            let intersection = FOLD.geom.segmentIntersectSegment(
-                [
-                    [newEdge.start.x, newEdge.start.y],
-                    [newEdge.end.x, newEdge.end.y]
-                ],
-                [
-                    [mathLines[i].start.x, mathLines[i].start.y],
-                    [mathLines[i].end.x, mathLines[i].end.y]
-                ]
+        if (!(mathLines.some(line => newEdge.equals(line)))) {
+            drawLine(
+                [newEdge.start.x, newEdge.start.y, newEdge.end.x, newEdge.end.y],
+                0,
+                1,
+                0,
+                1
             );
-            if (intersection) {
-                createNewVert(new THREE.Vector3(intersection[0], intersection[1], 0));
+            // let intersections = [];
+            for (let i = 0; i < mathLines.length; i++) {
+                /**
+                 * FOLD.geom.segmentIntersectSegment expects two line segments s1, s2, where each is
+                 * an array of two points, where each point is an array of two values, x and y
+                 * ex: s1=[[x1, y1], [x2, y2]], s2=[[x3, y3], [x4, y4]]
+                 * and returns their intersection as an array with two values representing a point
+                 */
+                let intersection = FOLD.geom.segmentIntersectSegment(
+                    [
+                        [newEdge.start.x, newEdge.start.y],
+                        [newEdge.end.x, newEdge.end.y]
+                    ],
+                    [
+                        [mathLines[i].start.x, mathLines[i].start.y],
+                        [mathLines[i].end.x, mathLines[i].end.y]
+                    ]
+                );
+                if (intersection) {
+                    createNewVert(new THREE.Vector3(intersection[0], intersection[1], 0));
+                }
             }
         }
     }
@@ -796,7 +803,16 @@ function main() {
     }
 
     function foldAxiom4() {
-        console.warn("Axiom 4 not implemented");
+        let p1 = mathVertices[selectedPoints[0]];
+        let l1 = mathLines[selectedLines[0]];
+        let foldDir = new THREE.Vector3();
+
+        let lineDir = new THREE.Vector3();
+        l1.delta(lineDir);
+        foldDir.crossVectors(lineDir, new THREE.Vector3(0, 0, 1)).normalize();
+
+        let newVerts = findLineLimits(p1, foldDir);
+        createNewEdge(newVerts[0], newVerts[1]);
     }
 
     function foldAxiom5() {
