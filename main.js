@@ -46,6 +46,13 @@ function main() {
 
         creaseFrameExists = false;
 
+        mathLines.length = 0;
+        mathVertices.length = 0;
+        selectedPoints.length = 0;
+        selectedLines.length = 0;
+        selectedSVGCircles.length = 0;
+        selectedSVGLines.length = 0;
+
         drawVertLine();
         initSVGListeners();
         initButtonListeners();
@@ -78,18 +85,6 @@ function main() {
 
             let viewportDim = document.querySelector("svg").viewBox.baseVal;
 
-            // draw rectangle
-            newRect.setAttribute("x", vertices_coords[0][0]);
-            newRect.setAttribute("y", vertices_coords[0][0]);
-            newRect.setAttribute("width", viewportDim["width"]);
-            newRect.setAttribute("height", viewportDim["height"]);
-            newRect.setAttribute("fill", "#5cceee");
-            newRect.setAttribute("stroke", "black");
-            newRect.setAttribute('stroke-width', '.2')
-
-            // append the new rectangle to the svg
-            svg.appendChild(newRect);
-
             // find line information to adjust and scale them to the viewport
             [xOffset, yOffset] = [0, 0];
             let [minX, maxX] = [Infinity, -Infinity];
@@ -97,14 +92,12 @@ function main() {
             let lines = [];
             for (const edge of edges_vertices) {
 
-                // console.log('Looking at edge ', edge);
                 // x coordniate
                 const from_vertex_index = edge[0];
                 // y coordniate
                 const to_vertex_index = edge[1];
 
 
-                // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
                 const from_coords = vertices_coords[from_vertex_index];
                 const to_coords = vertices_coords[to_vertex_index];
 
@@ -129,12 +122,23 @@ function main() {
                 maxX = Math.max(maxX, x1, x2);
                 minY = Math.min(minY, y1, y2);
                 maxY = Math.max(maxY, y1, y2);
-                // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
             }
 
             // getting the max X and Y size of the viewbox
             xScale = viewportDim["width"] / (maxX - minX);
             yScale = viewportDim["height"] / (maxY - minY);
+
+            // draw the base rectangle
+            newRect.setAttribute("x", (minX + xOffset) * xScale);
+            newRect.setAttribute("y", (minY + yOffset) * yScale);
+            newRect.setAttribute("width", viewportDim["width"]);
+            newRect.setAttribute("height", viewportDim["height"]);
+            newRect.setAttribute("fill", "#5cceee");
+            newRect.setAttribute("stroke", "black");
+            newRect.setAttribute('stroke-width', '.2')
+
+            // append the new rectangle to the svg
+            svg.appendChild(newRect);
 
             // draw crease lines
             for (let i = 0; i < lines.length; i++) {
@@ -163,13 +167,24 @@ function main() {
         }
 
         function initButtonListeners() {
-            document.getElementById("huzita1").addEventListener("click", foldAxiom1);
-            document.getElementById("huzita2").addEventListener("click", foldAxiom2);
-            document.getElementById("huzita3").addEventListener("click", foldAxiom3);
-            document.getElementById("huzita4").addEventListener("click", foldAxiom4);
+            document.getElementById("huzita1").addEventListener("click", () => {
+                foldAxiom1(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]])});
+
+            document.getElementById("huzita2").addEventListener("click", () => {
+                foldAxiom2(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]])});
+
+            document.getElementById("huzita3").addEventListener("click", () => {
+                foldAxiom3(mathLines[selectedLines[0]], mathLines[selectedLines[1]])});
+
+            document.getElementById("huzita4").addEventListener("click", () => {
+                foldAxiom4(mathVertices[selectedPoints[0]], mathLines[selectedLines[0]])});
+
             document.getElementById("huzita5").addEventListener("click", foldAxiom5);
             document.getElementById("huzita6").addEventListener("click", foldAxiom6);
-            document.getElementById("huzita7").addEventListener("click", foldAxiom7);
+
+            document.getElementById("huzita7").addEventListener("click", () => {
+                foldAxiom7(mathVertices[selectedPoints[0]],
+                mathLines[selectedLines[0]], mathLines[selectedLines[1]])});
         }
 
         /**
@@ -177,7 +192,6 @@ function main() {
          * @param {Object} event The click event from the listener
          */
         function clickAPoint(event) {
-            // console.log(mathLines);
             let x = event.offsetX;
             let y = event.offsetY;
 
@@ -282,37 +296,6 @@ function main() {
             }
             changeSelection();
         }
-
-        function findNearestVert(){
-
-            // loop through the vertices and calculate the distance between the vertex and where ever the user is
-
-            const vertices_coords = foldObj['vertices_coords']
-            const edges_vertices = foldObj['edges_vertices']
-
-
-            for (const edge of edges_vertices) {
-
-                console.log('Looking at edge ', edge);
-                // x coordniate
-                const from_vertex_index = edge[0];
-                // y coordniate
-                const to_vertex_index = edge[1];
-
-                // console.log(`  |- Draw a line from #${from_vertex_index} -> #${to_vertex_index}`);
-                // const from_coords = vertices_coords[from_vertex_index];
-                // const to_coords = vertices_coords[to_vertex_index];
-
-                // console.log(`  |- Line coordinates are from `, from_coords, ' to ', to_coords);
-
-
-                // draw line
-
-                console.log(Math.hypot(edge[0],edge[1],24,10));
-
-            }
-        }
-
     }
 
     /**
@@ -334,8 +317,6 @@ function main() {
         newline.setAttribute('stroke-width', '2');
         newline.setAttribute("stroke", "white")
         newline.setAttribute('stroke-dasharray', "2")
-        // console.log("***************from__coords****",from_coords[0])
-        // console.log("***************to_coords****",to_coords[1])
         svg.appendChild(newline);
 
         // also construct the lines into THREE math objects
@@ -356,10 +337,10 @@ function main() {
     // camera limits and settings
     let isCamRotating = false;
     let isCamPanning = false;
-    const zoomLimit = 2;
+    const zoomLimit = 1;
     const zoomMax = 30;
     const restrictionRangeY = 0.05;
-    const sensitivityScale = 0.01;
+    const sensitivityScale = 0.0025;
     const zoomSensitivity = 0.01;
     let origin = new THREE.Vector3(0, 0, 0);
 
@@ -532,7 +513,7 @@ function main() {
                 }
 
                 // concatenating an empty array is a bit of a hack, bascially just squish the array
-                let vertsArray = deepArrayConcat(new Array(), vertex_coords);
+                let vertsArray = vertex_coords.flat(Infinity);
                 vertsArray = mathCoordConversion(vertsArray);
                 const vertices = new Float32Array(vertsArray);
 
@@ -540,7 +521,7 @@ function main() {
                 if (faces_vertices.some(el => el.length > 3)) {
                     faces_vertices = polygonToTri(faces_vertices);
                 }
-                triangleGeometry.setIndex(deepArrayConcat(new Array(), faces_vertices));
+                triangleGeometry.setIndex(faces_vertices.flat(Infinity));
                 triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
 
                 let plane = new THREE.Mesh(triangleGeometry,
@@ -583,32 +564,6 @@ function main() {
         }
 
         /**
-         * Helper function to cancatenate two arrays even if they have nested arrays inside
-         * @param {Array} array1 The array to be concatenated to
-         * @param {Array} array2 The array to concatenate onto array1
-         * @returns {Array} The result of deep concatenation
-         */
-        function deepArrayConcat(array1, array2) {
-            // TODO: handle in more graceful manner
-            if (!array2) {
-                alert("Something went wrong with coordinate arrays");
-            }
-            if (array2.some(el => Array.isArray(el))) {
-                array2.forEach(element => {
-                    if (Array.isArray(element)) {
-                        array1 = deepArrayConcat(array1, element);
-                    } else {
-                        array1 = array1.concat(element);
-                    }
-                });
-                return array1;
-            } else {
-                array1 = array1.concat(array2);
-                return array1;
-            }
-        }
-
-        /**
          * Function to split an array of indexed vertices as faces into triangles if they aren't already
          * @param {Array} array A list of faces made by referencing indexed vertices
          * @returns {Array} The original array modified to have many triangles instead of polygons
@@ -644,6 +599,7 @@ function main() {
          * Helper function to convert from XYZ (FOLD) to XZY (THREE.js) and possibly back as well. Used
          * on arrays of values every 3 representing one point, like after calling deepArrayConcat() on
          * the vertices from FOLD
+         * TODO check if this is really necessary
          * @param {Array} coordsArray An array of coordinates where every 3 values is one point
          * @returns A converted array where the second and third values of each coord are swapped
          */
@@ -662,21 +618,6 @@ function main() {
         }
     }
 
-
-    const huzitaOptions = [
-        {p:2, l:0},
-        {p:2, l:0},
-        {p:0, l:2},
-        {p:1, l:1},
-        {p:2, l:1},
-        {p:2, l:2},
-        {p:1, l:2}
-    ]
-    const buttons = [];
-    for (let i = 0; i < huzitaOptions.length; i++) {
-        buttons.push(document.getElementById(`huzita${i+1}`));
-    }
-
     /**
      * Creates a new edge on the shape
      * @param {Vector3} v1 A THREE Vector3, the start of the line
@@ -690,33 +631,35 @@ function main() {
          * make new vertices
          */
         let newEdge = new THREE.Line3(v1, v2);
-        drawLine(
-            [newEdge.start.x, newEdge.start.y, newEdge.end.x, newEdge.end.y],
-            0,
-            1,
-            0,
-            1
-        );
-        // let intersections = [];
-        for (let i = 0; i < mathLines.length; i++) {
-            /**
-             * FOLD.geom.segmentIntersectSegment expects two line segments s1, s2, where each is
-             * an array of two points, where each point is an array of two values, x and y
-             * ex: s1=[[x1, y1], [x2, y2]], s2=[[x3, y3], [x4, y4]]
-             * and returns their intersection as an array with two values representing a point
-             */
-            let intersection = FOLD.geom.segmentIntersectSegment(
-                [
-                    [newEdge.start.x, newEdge.start.y],
-                    [newEdge.end.x, newEdge.end.y]
-                ],
-                [
-                    [mathLines[i].start.x, mathLines[i].start.y],
-                    [mathLines[i].end.x, mathLines[i].end.y]
-                ]
+        if (!(mathLines.some(line => newEdge.equals(line)))) {
+            drawLine(
+                [newEdge.start.x, newEdge.start.y, newEdge.end.x, newEdge.end.y],
+                0,
+                1,
+                0,
+                1
             );
-            if (intersection) {
-                createNewVert(new THREE.Vector3(intersection[0], intersection[1], 0));
+            // let intersections = [];
+            for (let i = 0; i < mathLines.length; i++) {
+                /**
+                 * FOLD.geom.segmentIntersectSegment expects two line segments s1, s2, where each is
+                 * an array of two points, where each point is an array of two values, x and y
+                 * ex: s1=[[x1, y1], [x2, y2]], s2=[[x3, y3], [x4, y4]]
+                 * and returns their intersection as an array with two values representing a point
+                 */
+                let intersection = FOLD.geom.segmentIntersectSegment(
+                    [
+                        [newEdge.start.x, newEdge.start.y],
+                        [newEdge.end.x, newEdge.end.y]
+                    ],
+                    [
+                        [mathLines[i].start.x, mathLines[i].start.y],
+                        [mathLines[i].end.x, mathLines[i].end.y]
+                    ]
+                );
+                if (intersection) {
+                    createNewVert(new THREE.Vector3(intersection[0], intersection[1], 0));
+                }
             }
         }
     }
@@ -724,7 +667,8 @@ function main() {
     // creates a new vertice given a Vector3 if there isn't a vertex already there
     function createNewVert(vert) {
         // this will handle adding new vertices to the SVG and the data structures as well if needed
-        // console.log(vert);
+        vert.x = round(vert.x);
+        vert.y = round(vert.y);
         if (!mathVertices.some(v => v.equals(vert))) {
             mathVertices.push(vert);
         }
@@ -743,7 +687,6 @@ function main() {
         vector.normalize();
         let lineStart = [origin.x - (vector.x * distance), origin.y - (vector.y * distance)];
         let lineEnd = [origin.x + (vector.x * distance), origin.y + (vector.y * distance)];
-        // console.log(lineStart, lineEnd);
         let intersections = [];
 
         for (let i = 0; i < mathLines.length; i++) {
@@ -752,40 +695,17 @@ function main() {
                 [mathLines[i].end.x, mathLines[i].end.y]
             ])
             if (interSectPt) {
-                intersections.push(interSectPt);
+                intersections.push([round(interSectPt[0]), round(interSectPt[1])]);
             }
         }
         return intersections;
     }
 
-    // to be called whenever a change is made to selected, updates the buttons to available options
-    function changeSelection() {
-        let np = selectedPoints.length;
-        let nl = selectedLines.length;
-        for (let i = 0; i < buttons.length; i++) {
-            if (huzitaOptions[i].p === np && huzitaOptions[i].l === nl) {
-                buttons[i].disabled = false;
-            } else {
-                buttons[i].disabled = true;
-            }
-        }
-    }
-
-    function foldAxiom1() {
-        createNewEdge(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]]);
-    }
-
-    function foldAxiom2() {
-        let bisector = new THREE.Vector3();
-        let lineBetween = new THREE.Line3(mathVertices[selectedPoints[0]],
-            mathVertices[selectedPoints[1]]);
-        let pointDirection = new THREE.Vector3();
-        lineBetween.delta(pointDirection);
-        let origin = new THREE.Vector3();
-        lineBetween.getCenter(origin);
-        bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
-
-        let intersections = lineAllCollisions(origin, bisector);
+    /**
+     * Given the origin and direction vector, finds the limits of the line as a crease in the shape
+     */
+    function findLineLimits(origin, direction) {
+        let intersections = lineAllCollisions(origin, direction);
         let mindex = 0;
         let maxdex = 0;
         for (let i = 0; i < intersections.length; i++) {
@@ -801,16 +721,108 @@ function main() {
             }
         }
 
-        createNewEdge(new THREE.Vector3(intersections[mindex][0], intersections[mindex][1], 0),
-            new THREE.Vector3(intersections[maxdex][0], intersections[maxdex][1], 0));
+        return [new THREE.Vector3(intersections[mindex][0], intersections[mindex][1], 0),
+        new THREE.Vector3(intersections[maxdex][0], intersections[maxdex][1], 0)];
     }
 
-    function foldAxiom3() {
-        console.warn("Axiom 3 not implemented");
+
+    const huzitaOptions = [
+        {p:2, l:0},
+        {p:2, l:0},
+        {p:0, l:2},
+        {p:1, l:1},
+        {p:2, l:1},
+        {p:2, l:2},
+        {p:1, l:2}
+    ]
+    const buttons = [];
+    for (let i = 0; i < huzitaOptions.length; i++) {
+        buttons.push(document.getElementById(`huzita${i+1}`));
     }
 
-    function foldAxiom4() {
-        console.warn("Axiom 4 not implemented");
+    // to be called whenever a change is made to selected, updates the buttons to available options
+    function changeSelection() {
+        let np = selectedPoints.length;
+        let nl = selectedLines.length;
+        for (let i = 0; i < buttons.length; i++) {
+            if (huzitaOptions[i].p === np && huzitaOptions[i].l === nl) {
+                buttons[i].disabled = false;
+            } else {
+                buttons[i].disabled = true;
+            }
+        }
+    }
+
+    /**
+     * For all folding operations by axioms, see https://en.wikipedia.org/wiki/Huzita–Hatori_axioms
+     */
+
+    // create a new edge using the two points selected
+    function foldAxiom1(p1, p2) {
+        createNewEdge(p1, p2);
+    }
+
+    // bisect the line b/w the two selected points and use orthogonal line to make the crease
+    function foldAxiom2(p1, p2) {
+        let bisector = new THREE.Vector3();
+        let lineBetween = new THREE.Line3(p1, p2);
+        let pointDirection = new THREE.Vector3();
+        lineBetween.delta(pointDirection);
+        let origin = new THREE.Vector3();
+        lineBetween.getCenter(origin);
+        bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
+
+        let newVerts = findLineLimits(origin, bisector);
+
+        createNewEdge(newVerts[0], newVerts[1]);
+    }
+
+    // find bisector for the two lines, then intersection point, take this as the crease
+    function foldAxiom3(l1, l2) {
+        // find the direction of the bisecting line
+        let bisector = new THREE.Vector3();
+        let dir1 = new THREE.Vector3();
+        l1.delta(dir1);
+        let dir2 = new THREE.Vector3();
+        l2.delta(dir2);
+
+        // we need the two vectors to be pointing in the same direction
+        if (dir1.dot(dir2) < 0) {
+            dir1.multiplyScalar(-1);
+        }
+        bisector.addVectors(dir1.normalize(), dir2.normalize());
+
+        // find the origin point where the lines intersect
+        let origin = FOLD.geom.segmentIntersectSegment([
+                [l1.start.x - (dir1 * 1000), l1.start.y - (dir1 * 1000)],
+                [l1.end.x + (dir1 * 1000), l1.end.y + (dir1 * 1000)]
+            ],
+            [
+                [l2.start.x - (dir2 * 1000), l2.start.y - (dir2 * 1000)],
+                [l2.end.x + (dir2 * 1000), l2.end.y + (dir2 * 1000)]
+            ]
+        );
+        let newVerts;
+        if (!origin) {
+            // scuffed way to get a point inbetween the two selected lines if parallel
+            origin = new THREE.Vector3();
+            (new THREE.Line3(l1.start, l2.start)).getCenter(origin);
+        }
+        newVerts = findLineLimits(origin, bisector);
+        console.log(newVerts);
+        createNewEdge(newVerts[0], newVerts[1]);
+
+    }
+
+    function foldAxiom4(p1, l1) {
+        let foldDir = new THREE.Vector3();
+
+        let lineDir = new THREE.Vector3();
+        l1.delta(lineDir);
+        foldDir.crossVectors(lineDir, new THREE.Vector3(0, 0, 1)).normalize();
+
+        let newVerts = findLineLimits(p1, foldDir);
+        createNewEdge(newVerts[0], newVerts[1]);
     }
 
     function foldAxiom5() {
@@ -821,8 +833,30 @@ function main() {
         console.warn("Axiom 6 not implemented");
     }
 
-    function foldAxiom7() {
-        console.warn("Axiom 7 not implemented");
+    function foldAxiom7(p1, l1, l2) {
+        let lineTwoDir = new THREE.Vector3();
+        l2.delta(lineTwoDir);
+        console.log(p1, l1, l2);
+        let pointOnLine = FOLD.geom.segmentIntersectSegment(
+            [
+                [p1.x - (lineTwoDir.x * 2000), p1.y - (lineTwoDir.y * 2000)],
+                [p1.x + (lineTwoDir.x * 2000), p1.y + (lineTwoDir.y * 2000)]
+            ],
+            [
+                [l1.start.x, l1.start.y],
+                [l1.end.x, l1.end.y]
+            ]
+        );
+        console.log(pointOnLine);
+        foldAxiom2(p1, new THREE.Vector3(pointOnLine[0], pointOnLine[1], 0));
+    }
+
+    function round(num, eps = 0.001) {
+        let roundUp = (Math.ceil(num) - num) < eps;
+        let roundDown = (num - Math.floor(num)) < eps;
+        if (roundUp || roundDown) {
+            return Math.round(num);
+        }
     }
 }
 
