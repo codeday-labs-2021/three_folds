@@ -753,6 +753,10 @@ function main() {
         }
     }
 
+    /**
+     * For all folding operations by axioms, see https://en.wikipedia.org/wiki/Huzita–Hatori_axioms
+     */
+
     // create a new edge using the two points selected
     function foldAxiom1(p1, p2) {
         createNewEdge(p1, p2);
@@ -783,7 +787,7 @@ function main() {
         l2.delta(dir2);
 
         // we need the two vectors to be pointing in the same direction
-        if (dir1.angleTo(dir2) > (Math.PI / 2)) {
+        if (dir1.dot(dir2) < 0) {
             dir1.multiplyScalar(-1);
         }
         bisector.addVectors(dir1.normalize(), dir2.normalize());
