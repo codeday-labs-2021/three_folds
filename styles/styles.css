@@ -15,6 +15,10 @@ canvas {
     max-width: min-content;
 }
 
-/* canvas, svg {
-    padding: 1%;
-} */
+input[type=range] {
+    width: 20vw;
+}
+
+.hidden {
+    display: none;
+}
