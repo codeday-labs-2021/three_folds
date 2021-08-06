@@ -872,23 +872,19 @@ function main() {
      */
     function findLineLimits(origin, direction) {
         let intersections = lineAllCollisions(origin, direction);
-        let mindex = 0;
-        let maxdex = 0;
+        let indexMaxX = 0;
+        let indexMaxY = 0;
         for (let i = 0; i < intersections.length; i++) {
-            if (intersections[i][0] < intersections[mindex][0]) {
-                mindex = i;
-            } else if (intersections[i][1] < intersections[mindex][1]) {
-                mindex = i;
+            if (intersections[i][0] > intersections[indexMaxX][0]) {
+                indexMaxX = i;
             }
-            if (intersections[i][0] > intersections[maxdex][0]) {
-                maxdex = i;
-            } else if (intersections[i][1] > intersections[maxdex][1]) {
-                maxdex = i;
+            if (intersections[i][1] > intersections[indexMaxY][1]) {
+                indexMaxY = i;
             }
         }
 
-        return [new THREE.Vector3(intersections[mindex][0], intersections[mindex][1], 0),
-        new THREE.Vector3(intersections[maxdex][0], intersections[maxdex][1], 0)];
+        return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
+        new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0)];
     }
 
     /**
@@ -985,7 +981,7 @@ function main() {
         if (dir1.dot(dir2) < 0) {
             dir1.multiplyScalar(-1);
         }
-        bisector.addVectors(dir1.normalize(), dir2.normalize());
+        bisector.addVectors(dir1.normalize(), dir2.normalize()).normalize();
 
         // find the origin point where the lines intersect
         let origin = FOLD.geom.segmentIntersectSegment([
@@ -1004,6 +1000,7 @@ function main() {
             (new THREE.Line3(l1.start, l2.start)).getCenter(origin);
         }
         newVerts = findLineLimits(origin, bisector);
+        console.log(newVerts);
         createNewEdge(newVerts[0], newVerts[1]);
 
     }
@@ -1048,6 +1045,8 @@ function main() {
         let roundDown = (num - Math.floor(num)) < eps;
         if (roundUp || roundDown) {
             return Math.round(num);
+        } else {
+            return num;
         }
     }
 
