@@ -93,6 +93,11 @@ function main() {
                     }
                 }
             }
+            // quick fix for fold library method not working properly w/ diagonal-unfolded.fold
+            if (foldObj["frame_classes"][0] === "creasePattern") {
+                creaseFrameExists = true;
+                frame = foldObj;
+            }
 
             // not gonna handle inheritance, just expect creasePattern to have all info
             let vertices_coords, edges_vertices;
@@ -104,6 +109,7 @@ function main() {
                 vertices_coords = foldObj["vertices_flatFoldCoords"];
                 edges_vertices = foldObj['edges_vertices'];
             }
+
 
             let newRect = document.createElementNS(svgns, "rect");
 
@@ -327,7 +333,6 @@ function main() {
      * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
      */
      function drawLine(line, xOffset, xScale, yOffset, yScale) {
-        console.log(line);
         line[0] = (line[0] + xOffset) * xScale;
         line[1] = (line[1] + yOffset) * yScale;
         line[2] = (line[2] + xOffset) * xScale;
