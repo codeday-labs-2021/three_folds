@@ -417,63 +417,14 @@ function main() {
             scene.clear();
             let shapes = [];
 
-            if (foldObj["file_frames"]) {
-                // assuming one frame is creases and other is 3D folded shape
-                let primaryStructureFound = foldObj["file_frames"].some(frame => {
-                    return frame["frame_classes"].includes("foldedForm");
-                });
+            setFoldObjGlobalReferences(foldObj);
 
-                for (let i = 0; i < foldObj["file_frames"].length; i++) {
-                    let frame = foldObj["file_frames"][i];
-
-                    // these class names are specific to our implementation
-                    if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
-                        let verts = frame["vertices_coords"];
-                        let faces = frame["faces_vertices"];
-                        let edges = frame["edges_vertices"];
-                        let faceEdges = frame["faces_edges"];
-                        // handle inheriting attributes if they don't exist in this frame
-                        if (!verts) {
-                            // ugly
-                            verts = foldObj["file_frames"][frame["frame_parent"]]["vertices_coords"];
-                        }
-                        if (!faces) {
-                            faces = foldObj["file_frames"][frame["frame_parent"]]["faces_vertices"];
-                        }
-                        if (!edges) {
-                            edges = foldObj["file_frames"][frame["frame_parent"]]["edges_vertices"];
-                        }
-                        if (!faceEdges) {
-                            faceEdges = foldObj["file_frames"][frame["frame_parent"]]["faces_edges"];
-                        }
-                        foldVerts = verts;
-                        foldEdges = edges;
-                        foldFaceVerts = faces;
-                        foldFaceEdges = faceEdges;
-                        let createdGeom = createFaceGeom(verts, faces);
-
-                        // in case of failure somehow do not add it to the scene
-                        if (createdGeom) shapes.push(createdGeom);
-                    } else if (frame["frame_classes"].includes("creasePattern") && !primaryStructureFound) {
-                        foldVerts = frame["vertices_coords"];
-                        foldEdges = frame["edges_vertices"];
-                        foldFaceVerts = frame["faces_vertices"];
-                        foldFaceEdges = frame["faces_edges"];
-                        let createdGeom = createFaceGeom(foldVerts, foldFaceVerts);
-                        if (createdGeom) shapes.push(createdGeom);
-                    }
-                }
-            } else {
-                foldVerts = foldObj["vertices_coords"];
-                foldEdges = foldObj["edges_vertices"];
-                foldFaceVerts = foldObj["faces_vertices"];
-                foldFaceEdges = foldObj["faces_edges"];
-                shapes.push(createFaceGeom(foldVerts, foldFaceVerts));
-            }
+            let createdGeom = createFaceGeom(foldVerts, foldFaceVerts);
+            if (createdGeom) shapes.push(createdGeom);
 
             shapes.forEach(shape => {
                 scene.add(shape);
-                const edgeGeom = new THREE.EdgesGeometry(shape.geometry, 0);
+                const edgeGeom = new THREE.EdgesGeometry(shape.geometry);
                 const lineSegments = new THREE.LineSegments(edgeGeom, new THREE.LineBasicMaterial({
                     color: 0xffffff,
                 }));
@@ -657,6 +608,55 @@ function main() {
         }
     }
 
+    function setFoldObjGlobalReferences(foldObj) {
+        if (foldObj["file_frames"]) {
+            // assuming one frame is creases and other is 3D folded shape
+            let primaryStructureFound = foldObj["file_frames"].some(frame => {
+                return frame["frame_classes"].includes("foldedForm");
+            });
+
+            for (let i = 0; i < foldObj["file_frames"].length; i++) {
+                let frame = foldObj["file_frames"][i];
+
+                // these class names are specific to our implementation
+                if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
+                    let verts = frame["vertices_coords"];
+                    let faces = frame["faces_vertices"];
+                    let edges = frame["edges_vertices"];
+                    let faceEdges = frame["faces_edges"];
+                    // handle inheriting attributes if they don't exist in this frame
+                    if (!verts) {
+                        // ugly
+                        verts = foldObj["file_frames"][frame["frame_parent"]]["vertices_coords"];
+                    }
+                    if (!faces) {
+                        faces = foldObj["file_frames"][frame["frame_parent"]]["faces_vertices"];
+                    }
+                    if (!edges) {
+                        edges = foldObj["file_frames"][frame["frame_parent"]]["edges_vertices"];
+                    }
+                    if (!faceEdges) {
+                        faceEdges = foldObj["file_frames"][frame["frame_parent"]]["faces_edges"];
+                    }
+                    foldVerts = verts;
+                    foldEdges = edges;
+                    foldFaceVerts = faces;
+                    foldFaceEdges = faceEdges;
+
+                } else if (frame["frame_classes"].includes("creasePattern") && !primaryStructureFound) {
+                    foldVerts = frame["vertices_coords"];
+                    foldEdges = frame["edges_vertices"];
+                    foldFaceVerts = frame["faces_vertices"];
+                    foldFaceEdges = frame["faces_edges"];
+                }
+            }
+        } else {
+            foldVerts = foldObj["vertices_coords"];
+            foldEdges = foldObj["edges_vertices"];
+            foldFaceVerts = foldObj["faces_vertices"];
+            foldFaceEdges = foldObj["faces_edges"];
+        }
+    }
 
     /**
      * Handles changing the angles of selected edges, where the "angle" of an edge is the angle b/w
@@ -748,7 +748,7 @@ function main() {
         for (let i = 0; i < rotateIndices.length; i++) {
             let index = rotateIndices[i];
 
-            let vertVector = arrayToVector3(verts[i]);
+            let vertVector = arrayToVector3(verts[index]);
             vertVector.applyMatrix4(translationMatrix);
             vertVector.applyMatrix4(rotationMatrix);
             vertVector.applyMatrix4(inverseTranslationMatrix);
@@ -791,6 +791,10 @@ function main() {
 
             // this also adds the necessary vertices, i think
             FOLD.filter.addEdgeAndSubdivide(foldObj, point1, point2, 0.0001);
+            mathLines3D.push(new THREE.Line3(
+                (new THREE.Vector3()).fromArray(point1),
+                (new THREE.Vector3()).fromArray(point2)
+            ));
 
 
             // let intersections = [];
@@ -821,12 +825,10 @@ function main() {
                 }
             }
             // regenerate the faces
-            foldFaceVerts.length = 0; // assuming this still points to the faces_vertices afterwards
-            foldFaceEdges.length = 0;
             FOLD.convert.edges_vertices_to_vertices_vertices_sorted(foldObj);
             FOLD.convert.vertices_vertices_to_faces_vertices(foldObj);
             FOLD.convert.faces_vertices_to_faces_edges(foldObj);
-
+            setFoldObjGlobalReferences(foldObj);
         }
     }
 
@@ -874,6 +876,10 @@ function main() {
         let intersections = lineAllCollisions(origin, direction);
         let indexMaxX = 0;
         let indexMaxY = 0;
+        let indexMinX = 0;
+        let indexMinY = 0;
+
+        // scuffed way of checking this,  i can't think of a better way w/o adding an edges array
         for (let i = 0; i < intersections.length; i++) {
             if (intersections[i][0] > intersections[indexMaxX][0]) {
                 indexMaxX = i;
@@ -881,10 +887,20 @@ function main() {
             if (intersections[i][1] > intersections[indexMaxY][1]) {
                 indexMaxY = i;
             }
+            if (intersections[i][0] < intersections[indexMinX][0]) {
+                indexMinX = i;
+            }
+            if (intersections[i][1] < intersections[indexMinY][1]) {
+                indexMinY = i;
+            }
         }
-
-        return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
-        new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0)];
+        if (arraysEqual(intersections[indexMaxX], intersections[indexMaxY])) {
+            return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
+                new THREE.Vector3(intersections[indexMinX][0], intersections[indexMinX][1], 0)]
+        } else {
+            return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
+                new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0)];
+        }
     }
 
     /**
@@ -899,7 +915,6 @@ function main() {
             mathLines[i].closestPointToPoint(point, true, closestPointOnLine)
             if (closestPointOnLine.equals(point)) {
                 let returnPoint = new THREE.Vector3();
-                console.log(i, mathLines3D);
                 mathLines3D[i].at(
                     mathLines[i].closestPointToPointParameter(point, true), returnPoint
                 );
@@ -1000,7 +1015,6 @@ function main() {
             (new THREE.Line3(l1.start, l2.start)).getCenter(origin);
         }
         newVerts = findLineLimits(origin, bisector);
-        console.log(newVerts);
         createNewEdge(newVerts[0], newVerts[1]);
 
     }
