@@ -116,7 +116,7 @@ function main() {
             let edgesSegments = [];
             for (let i = 0; i < edges_vertices.length; i++) {
                 let edge = edges_vertices[i];
-                // x coordniate
+                // x coordinate
                 const from_vertex_index = edge[0];
                 // y coordniate
                 const to_vertex_index = edge[1];
@@ -327,6 +327,7 @@ function main() {
      * @param {Array} line Four values of the form [x1, y1, x2, y2] representing a line b/w 2 points
      */
      function drawLine(line, xOffset, xScale, yOffset, yScale) {
+        console.log(line);
         line[0] = (line[0] + xOffset) * xScale;
         line[1] = (line[1] + yOffset) * yScale;
         line[2] = (line[2] + xOffset) * xScale;
@@ -379,9 +380,10 @@ function main() {
     // handle the main 3D rendering
     function render3D(foldObj, reRender) {
 
-
-        initRenderer();
-        init3DListeners(reRender);
+        if (!reRender) {
+            initRenderer();
+            init3DListeners();
+        }
         loadShapes();
         animate();
 
@@ -483,60 +485,58 @@ function main() {
         function init3DListeners(reRender) {
             // some listeners require access to the objects in this instance of the function
 
-            if (!reRender) {
-                // prevent right clicks from opening the context menu anywhere
-                document.addEventListener("contextmenu", e => {
-                    e.preventDefault();
-                });
+            // prevent right clicks from opening the context menu anywhere
+            document.addEventListener("contextmenu", e => {
+                e.preventDefault();
+            });
 
-                    // when clicking into the canvas, start rotating
-                canvas.addEventListener("mousedown", e => {
-                    if (e.button === 0) {
-                        isCamRotating = true;
-                    } else if (e.button === 2) {
-                        isCamPanning = true;
-                    }
-                });
+                // when clicking into the canvas, start rotating
+            canvas.addEventListener("mousedown", e => {
+                if (e.button === 0) {
+                    isCamRotating = true;
+                } else if (e.button === 2) {
+                    isCamPanning = true;
+                }
+            });
 
-                // listen for mouse release on the whole page to prevent accidental sticky rotate
-                document.addEventListener("mouseup", e => {
-                    if (isCamRotating || isCamPanning) {
-                        isCamRotating = false;
-                        isCamPanning = false;
-                    }
-                });
+            // listen for mouse release on the whole page to prevent accidental sticky rotate
+            document.addEventListener("mouseup", e => {
+                if (isCamRotating || isCamPanning) {
+                    isCamRotating = false;
+                    isCamPanning = false;
+                }
+            });
 
-                // orbit the camera upon mouse movement in the canvas, pan if right clicked
-                canvas.addEventListener("mousemove", e => {
-                    if (isCamRotating) {
-                        theta -= degToRad(e.movementX);
-                        let n = phi - degToRad(e.movementY);
-                        if (n > Math.PI - restrictionRangeY) {
-                            phi = Math.PI - restrictionRangeY;
-                        } else if (n < restrictionRangeY) {
-                            phi = restrictionRangeY;
-                        } else {
-                            phi = n;
-                        }
-                    } else if (isCamPanning) { // prevent both pan and rotate at same time
-                        origin.setComponent(0, origin.x - (e.movementX * sensitivityScale)); // x axis movement
-                        origin.setComponent(2, origin.z - (e.movementY * sensitivityScale));
-                    }
-                });
-
-                // use scroll wheel to zoom
-                canvas.addEventListener("wheel", e => {
-                    e.preventDefault();
-                    let newZoom = rotationRadius + e.deltaY * zoomSensitivity;
-                    if (newZoom < zoomLimit) {
-                        rotationRadius = zoomLimit;
-                    } else if (newZoom > zoomMax) {
-                        rotationRadius = zoomMax;
+            // orbit the camera upon mouse movement in the canvas, pan if right clicked
+            canvas.addEventListener("mousemove", e => {
+                if (isCamRotating) {
+                    theta -= degToRad(e.movementX);
+                    let n = phi - degToRad(e.movementY);
+                    if (n > Math.PI - restrictionRangeY) {
+                        phi = Math.PI - restrictionRangeY;
+                    } else if (n < restrictionRangeY) {
+                        phi = restrictionRangeY;
                     } else {
-                        rotationRadius = newZoom;
+                        phi = n;
                     }
-                });
-            }
+                } else if (isCamPanning) { // prevent both pan and rotate at same time
+                    origin.setComponent(0, origin.x - (e.movementX * sensitivityScale)); // x axis movement
+                    origin.setComponent(2, origin.z - (e.movementY * sensitivityScale));
+                }
+            });
+
+            // use scroll wheel to zoom
+            canvas.addEventListener("wheel", e => {
+                e.preventDefault();
+                let newZoom = rotationRadius + e.deltaY * zoomSensitivity;
+                if (newZoom < zoomLimit) {
+                    rotationRadius = zoomLimit;
+                } else if (newZoom > zoomMax) {
+                    rotationRadius = zoomMax;
+                } else {
+                    rotationRadius = newZoom;
+                }
+            });
         }
 
         function animate() {
@@ -696,7 +696,6 @@ function main() {
                 vertsIndicesToRotate.push(faceToRotate[i]);
             }
         }
-        console.log(vertsIndicesToRotate);
 
         let angleToRotate = angle - edges_angles[edgeIndex];
         let start = arrayToVector3(foldVerts[foldEdges[edgeIndex][0]]);
@@ -751,8 +750,6 @@ function main() {
 
             verts[index] = vertVector.toArray(); // modify the fold object in place
         }
-        console.log("Rotation completed");
-        console.log(foldVerts);
 
         // make a call to render everything again
         render3D(foldObj, true);
