@@ -1,0 +1,25 @@
+{
+  "file_spec": 1.1,
+  "file_classes": [ "singleModel" ],
+  "file_title": "A flat sheet",
+  "frame_classes": [ "creasePattern" ],
+  "vertices_coords": [
+    [-1,-1],
+    [1,-1],
+    [1,1],
+    [-1,1]
+  ],
+  "edges_vertices": [
+    [0,1],
+    [1,2],
+    [2,3],
+    [3,0]
+  ],
+  "faces_vertices": [
+    [0,1,2,3]
+  ],
+  "faces_edges": [
+    [0,1,2,3]
+  ]
+}
+
