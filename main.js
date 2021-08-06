@@ -418,6 +418,8 @@ function main() {
                     if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
                         let verts = frame["vertices_coords"];
                         let faces = frame["faces_vertices"];
+                        let edges = frame["edges_vertices"];
+                        let faceEdges = frame["faces_edges"];
                         // handle inheriting attributes if they don't exist in this frame
                         if (!verts) {
                             // ugly
@@ -427,12 +429,15 @@ function main() {
                             faces = foldObj["file_frames"][frame["frame_parent"]]["faces_vertices"];
                         }
                         if (!edges) {
-                            edges = foldObj["file_frame"][frame["frame_parent"]]["edges_vertices"];
+                            edges = foldObj["file_frames"][frame["frame_parent"]]["edges_vertices"];
+                        }
+                        if (!faceEdges) {
+                            faceEdges = foldObj["file_frames"][frame["frame_parent"]]["faces_edges"];
                         }
                         foldVerts = verts;
-                        foldEdges = frame["edges_vertices"];
+                        foldEdges = edges;
                         foldFaceVerts = faces;
-                        foldFaceEdges = frame["faces_edges"];
+                        foldFaceEdges = faceEdges;
                         let createdGeom = createFaceGeom(verts, faces);
 
                         // in case of failure somehow do not add it to the scene
@@ -691,11 +696,8 @@ function main() {
         let angleToRotate = angle - edges_angles[edgeIndex];
         let start = arrayToVector3(foldVerts[foldEdges[edgeIndex][0]]);
         let end = arrayToVector3(foldVerts[foldEdges[edgeIndex][1]]);
-        let rotationAxisLine = new THREE.Line3(start, end);
-        let rotationAxis = new THREE.Vector3();
-        console.log(rotationAxis);
-        rotationAxisLine.delta(rotationAxis); // need to convert to direction vector
-        makeVertsRotation(foldVerts, vertsIndicesToRotate, rotationAxis.normalize(), angleToRotate);
+        let rotationAxis = new THREE.Line3(start, end);
+        makeVertsRotation(foldVerts, vertsIndicesToRotate, rotationAxis, angleToRotate);
 
         edges_angles[edgeIndex] = angle;
 
@@ -705,28 +707,42 @@ function main() {
      * Handles actually rotating the vertices using THREE matrix math
      * @param {Array} verts vertices_coords on the fold object
      * @param {Array} rotateIndices indices of the verts to rotate
-     * @param {Line3} axis the axis to rotate the vertices around
+     * @param {Line3} axisLine the axis to rotate the vertices around
      * @param {Number} angle the angle to rotate the vertices by
      */
-    function makeVertsRotation(verts, rotateIndices, axis, angle) {
+    function makeVertsRotation(verts, rotateIndices, axisLine, angle) {
+        let axis = new THREE.Vector3();
+        axisLine.delta(axis);
+        axis.normalize();
+
         let rotationMatrix = new THREE.Matrix4();
         angle = degToRad(angle);
         rotationMatrix.makeRotationAxis(axis, angle);
-        console.log(rotationMatrix);
+
+        let translationVector = new THREE.Vector3();
+        axisLine.getCenter(translationVector);
+
+        let translationMatrix = new THREE.Matrix4();
+        translationMatrix.makeTranslation(
+            -translationVector.x,
+            -translationVector.y,
+            -translationVector.z
+        );
+        let inverseTranslationMatrix = new THREE.Matrix4();
+        inverseTranslationMatrix.makeTranslation(
+            translationVector.x,
+            translationVector.y,
+            translationVector.z
+        );
+
 
         for (let i = 0; i < rotateIndices.length; i++) {
             let index = rotateIndices[i];
-            let translationMatrix = new THREE.Matrix4();
-            translationMatrix.makeTranslation(-verts[index][0], -verts[index][1], -verts[index][2]);
-            let inverseTranslationMatrix = new THREE.Matrix4();
-            inverseTranslationMatrix.makeTranslation(verts[index][0], verts[index][1], verts[index][2])
 
-            let vertVector = arrayToVector3(verts[index]);
-            console.log(vertVector);
+            let vertVector = arrayToVector3(verts[i]);
             vertVector.applyMatrix4(translationMatrix);
             vertVector.applyMatrix4(rotationMatrix);
             vertVector.applyMatrix4(inverseTranslationMatrix);
-            console.log(vertVector);
 
             verts[index] = vertVector.toArray(); // modify the fold object in place
         }
