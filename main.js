@@ -24,6 +24,11 @@ function main() {
         changeEdgeAngle(this.value, selectedLines[0]);
     });
 
+    // !!IMPORTANT --> UNCOMMENT THIS AND DELETE OTHER PART ONLY WHEN OPTIMIZED
+    // document.getElementById("line1").addEventListener("input", function() {
+    //     changeEdgeAngle(this.value, selectedLines[0]);
+    // });
+
     let foldObj;
 
 
@@ -478,58 +483,58 @@ function main() {
         function init3DListeners(reRender) {
             // some listeners require access to the objects in this instance of the function
 
-            // when clicking into the canvas, start rotating
-            canvas.addEventListener("mousedown", e => {
-                if (e.button === 0) {
-                    isCamRotating = true;
-                } else if (e.button === 2) {
-                    isCamPanning = true;
-                }
-            });
-
-            // listen for mouse release on the whole page to prevent accidental sticky rotate
-            document.addEventListener("mouseup", e => {
-                if (isCamRotating || isCamPanning) {
-                    isCamRotating = false;
-                    isCamPanning = false;
-                }
-            });
-
-            // orbit the camera upon mouse movement in the canvas, pan if right clicked
-            canvas.addEventListener("mousemove", e => {
-                if (isCamRotating) {
-                    theta -= degToRad(e.movementX);
-                    let n = phi - degToRad(e.movementY);
-                    if (n > Math.PI - restrictionRangeY) {
-                        phi = Math.PI - restrictionRangeY;
-                    } else if (n < restrictionRangeY) {
-                        phi = restrictionRangeY;
-                    } else {
-                        phi = n;
-                    }
-                } else if (isCamPanning) { // prevent both pan and rotate at same time
-                    origin.setComponent(0, origin.x - (e.movementX * sensitivityScale)); // x axis movement
-                    origin.setComponent(2, origin.z - (e.movementY * sensitivityScale));
-                }
-            });
-
-            // use scroll wheel to zoom
-            canvas.addEventListener("wheel", e => {
-                e.preventDefault();
-                let newZoom = rotationRadius + e.deltaY * zoomSensitivity;
-                if (newZoom < zoomLimit) {
-                    rotationRadius = zoomLimit;
-                } else if (newZoom > zoomMax) {
-                    rotationRadius = zoomMax;
-                } else {
-                    rotationRadius = newZoom;
-                }
-            });
-
             if (!reRender) {
                 // prevent right clicks from opening the context menu anywhere
                 document.addEventListener("contextmenu", e => {
                     e.preventDefault();
+                });
+
+                    // when clicking into the canvas, start rotating
+                canvas.addEventListener("mousedown", e => {
+                    if (e.button === 0) {
+                        isCamRotating = true;
+                    } else if (e.button === 2) {
+                        isCamPanning = true;
+                    }
+                });
+
+                // listen for mouse release on the whole page to prevent accidental sticky rotate
+                document.addEventListener("mouseup", e => {
+                    if (isCamRotating || isCamPanning) {
+                        isCamRotating = false;
+                        isCamPanning = false;
+                    }
+                });
+
+                // orbit the camera upon mouse movement in the canvas, pan if right clicked
+                canvas.addEventListener("mousemove", e => {
+                    if (isCamRotating) {
+                        theta -= degToRad(e.movementX);
+                        let n = phi - degToRad(e.movementY);
+                        if (n > Math.PI - restrictionRangeY) {
+                            phi = Math.PI - restrictionRangeY;
+                        } else if (n < restrictionRangeY) {
+                            phi = restrictionRangeY;
+                        } else {
+                            phi = n;
+                        }
+                    } else if (isCamPanning) { // prevent both pan and rotate at same time
+                        origin.setComponent(0, origin.x - (e.movementX * sensitivityScale)); // x axis movement
+                        origin.setComponent(2, origin.z - (e.movementY * sensitivityScale));
+                    }
+                });
+
+                // use scroll wheel to zoom
+                canvas.addEventListener("wheel", e => {
+                    e.preventDefault();
+                    let newZoom = rotationRadius + e.deltaY * zoomSensitivity;
+                    if (newZoom < zoomLimit) {
+                        rotationRadius = zoomLimit;
+                    } else if (newZoom > zoomMax) {
+                        rotationRadius = zoomMax;
+                    } else {
+                        rotationRadius = newZoom;
+                    }
                 });
             }
         }
