@@ -1,3 +1,11 @@
+/**
+ * THREE-FOLDS
+ * An origami simulator with 3D and 2D views of a FOLD pattern using Three.js
+ *
+ * Jason Gao and Farhan Begg
+ * Under the mentorship of Steven Stadnicki
+ */
+
 "use strict";
 
 const FOLD = require("fold");
@@ -12,13 +20,24 @@ function main() {
         reRender = true;
     });
 
+    document.getElementById("line1").addEventListener("change", function() {
+        changeEdgeAngle(this.value, selectedLines[0]);
+    });
+
+    // !!IMPORTANT --> UNCOMMENT THIS AND DELETE OTHER PART ONLY WHEN OPTIMIZED
+    // document.getElementById("line1").addEventListener("input", function() {
+    //     changeEdgeAngle(this.value, selectedLines[0]);
+    // });
+
+    let foldObj;
+
 
     function render(file, reRender) {
         let fReader = new FileReader();
-        fReader.addEventListener("load", event => {
+        fReader.addEventListener("load", () => {
             let text = fReader.result;
-            let foldObj = JSON.parse(text);
-            render2D(foldObj);
+            foldObj = JSON.parse(text);
+            render2D(foldObj, reRender);
             render3D(foldObj, reRender);
         });
         fReader.readAsText(file);
@@ -28,8 +47,11 @@ function main() {
     const vertexEpsilon = 20;
     const lineEpsilon = 15;
     let svg = document.getElementById("svg");
+
+
     const mathLines = [];
     const mathVertices = [];
+    const edges_angles = []; // angle b/w the normals of the two faces on sides of the edge
     let creaseFrameExists;
 
     // NOTE selected points and lines will store indices of corresponding in mathVerts and mathLines
@@ -42,12 +64,14 @@ function main() {
     let xScale, yScale;
 
     // SVG render and calculating the scaling from FOLD to the SVG
-    function render2D(foldObj) {
+    function render2D(foldObj, reRender) {
 
         creaseFrameExists = false;
 
+        // this is ugly as hell, could use a refactor to use less arrays
         mathLines.length = 0;
         mathVertices.length = 0;
+        edges_angles.length = 0;
         selectedPoints.length = 0;
         selectedLines.length = 0;
         selectedSVGCircles.length = 0;
@@ -55,7 +79,9 @@ function main() {
 
         drawVertLine();
         initSVGListeners();
-        initButtonListeners();
+        if (!reRender) {
+            initButtonListeners();
+        }
 
         function drawVertLine(){
             svg.innerHTML = "";
@@ -67,6 +93,13 @@ function main() {
                         frame = frame[i];
                         creaseFrameExists = true;
                     }
+                }
+            }
+            // quick fix for fold library method not working properly w/ diagonal-unfolded.fold
+            if (foldObj["frame_classes"]) {
+                if (foldObj["frame_classes"][0] === "creasePattern") {
+                    creaseFrameExists = true;
+                    frame = foldObj;
                 }
             }
 
@@ -81,6 +114,7 @@ function main() {
                 edges_vertices = foldObj['edges_vertices'];
             }
 
+
             let newRect = document.createElementNS(svgns, "rect");
 
             let viewportDim = document.querySelector("svg").viewBox.baseVal;
@@ -89,10 +123,10 @@ function main() {
             [xOffset, yOffset] = [0, 0];
             let [minX, maxX] = [Infinity, -Infinity];
             let [minY, maxY] = [Infinity, -Infinity];
-            let lines = [];
-            for (const edge of edges_vertices) {
-
-                // x coordniate
+            let edgesSegments = [];
+            for (let i = 0; i < edges_vertices.length; i++) {
+                let edge = edges_vertices[i];
+                // x coordinate
                 const from_vertex_index = edge[0];
                 // y coordniate
                 const to_vertex_index = edge[1];
@@ -102,7 +136,7 @@ function main() {
                 const to_coords = vertices_coords[to_vertex_index];
 
                 let line = from_coords.concat(to_coords);
-                lines.push(line);
+                edgesSegments.push(line);
 
                 // this part finds the max offsets so everything can be shifted into a viewable position
                 let x1 = from_coords[0];
@@ -141,8 +175,8 @@ function main() {
             svg.appendChild(newRect);
 
             // draw crease lines
-            for (let i = 0; i < lines.length; i++) {
-                let line = lines[i];
+            for (let i = 0; i < edgesSegments.length; i++) {
+                let line = edgesSegments[i];
                 drawLine(line, xOffset, xScale, yOffset, yScale);
             }
 
@@ -262,7 +296,7 @@ function main() {
 
         /**
          * Handles selecting a line and draws a corresponding line selection onto the SVG view
-         * @param {Line3} line a THREE Line3 object that represents the line being selected
+         * @param {Number} index the index of the line being selected, corresponding to mathLines
          */
         function selectLine(index) {
             if (selectedLines.includes(index)) {
@@ -322,9 +356,11 @@ function main() {
         // also construct the lines into THREE math objects
         mathLines.push(new THREE.Line3(new THREE.Vector3(line[0], line[1], 0),
             new THREE.Vector3(line[2], line[3], 0)));
+        edges_angles.push(0);
     }
 
     let canvas, scene, camera, renderer;
+    const mathLines3D = [];
 
     let rotationRadius = 5;
 
@@ -344,14 +380,21 @@ function main() {
     const zoomSensitivity = 0.01;
     let origin = new THREE.Vector3(0, 0, 0);
 
+
+    let foldVerts;
+    let foldEdges;
+    let foldFaceVerts;
+    let foldFaceEdges;
+
     // handle the main 3D rendering
     function render3D(foldObj, reRender) {
 
-
-        initRenderer();
-        init3DListeners(reRender);
+        if (!reRender) {
+            initRenderer();
+            init3DListeners();
+            animate();
+        }
         loadShapes();
-        animate();
 
         // init THREE.js rendering stuff
         function initRenderer() {
@@ -378,50 +421,18 @@ function main() {
             scene.clear();
             let shapes = [];
 
-            if (foldObj["file_frames"]) {
-                // assuming one frame is creases and other is 3D folded shape
-                let primaryStructureFound = foldObj["file_frames"].some(frame => {
-                    return frame["frame_classes"].includes("foldedForm");
-                });
+            setFoldObjGlobalReferences(foldObj);
 
-                for (let i = 0; i < foldObj["file_frames"].length; i++) {
-                    let frame = foldObj["file_frames"][i];
-
-                    // these class names are specific to our implementation
-                    if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
-                        let verts = frame["vertices_coords"];
-                        let faces = frame["faces_vertices"];
-
-                        // handle inheriting attributes if they don't exist in this frame
-                        if (!verts) {
-                            // ugly
-                            verts = foldObj["file_frames"][frame["frame_parent"]]["vertices_coords"];
-                        }
-                        if (!faces) {
-                            faces = foldObj["file_frames"][frame["frame_parent"]]["faces_vertices"];
-                        }
-                        let createdGeom = createFaceGeom(verts, faces);
-
-                        // in case of failure somehow do not add it to the scene
-                        if (createdGeom) {
-                            shapes.push(createdGeom);
-                        }
-                    } else if (frame["frame_classes"].includes("creasePattern") && !primaryStructureFound) {
-                        let createdGeom = createFaceGeom(frame["vertices_coords"], frame["faces_vertices"]);
-                        if (createdGeom) shapes.push(createdGeom);
-                    }
-                }
-            } else {
-                shapes.push(createFaceGeom(foldObj["vertices_coords"], foldObj["faces_vertices"]));
-            }
+            let createdGeom = createFaceGeom(foldVerts, foldFaceVerts);
+            if (createdGeom) shapes.push(createdGeom);
 
             shapes.forEach(shape => {
                 scene.add(shape);
-                const edges = new THREE.EdgesGeometry(shape.geometry);
-                const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
+                const edgeGeom = new THREE.EdgesGeometry(shape.geometry);
+                const lineSegments = new THREE.LineSegments(edgeGeom, new THREE.LineBasicMaterial({
                     color: 0xffffff,
                 }));
-                scene.add(lines);
+                scene.add(lineSegments);
             })
 
             // default to using the first shape as the center as there is no way to calc it w/ >1 shapes
@@ -434,7 +445,12 @@ function main() {
         function init3DListeners(reRender) {
             // some listeners require access to the objects in this instance of the function
 
-            // when clicking into the canvas, start rotating
+            // prevent right clicks from opening the context menu anywhere
+            document.addEventListener("contextmenu", e => {
+                e.preventDefault();
+            });
+
+                // when clicking into the canvas, start rotating
             canvas.addEventListener("mousedown", e => {
                 if (e.button === 0) {
                     isCamRotating = true;
@@ -481,13 +497,6 @@ function main() {
                     rotationRadius = newZoom;
                 }
             });
-
-            if (!reRender) {
-                // prevent right clicks from opening the context menu anywhere
-                document.addEventListener("contextmenu", e => {
-                    e.preventDefault();
-                });
-            }
         }
 
         function animate() {
@@ -506,6 +515,9 @@ function main() {
         function createFaceGeom(vertex_coords, faces_vertices) {
             // both have to exist in order for the shape to be rendered
             if (vertex_coords && faces_vertices) {
+
+                createMath3DLines(); // this is really lazy here to just use the globals
+
                 let triangleGeometry = new THREE.BufferGeometry();
 
                 if (vertex_coords.some(el => el.length !== 3)) {
@@ -515,14 +527,14 @@ function main() {
                 // concatenating an empty array is a bit of a hack, bascially just squish the array
                 let vertsArray = vertex_coords.flat(Infinity);
                 vertsArray = mathCoordConversion(vertsArray);
-                const vertices = new Float32Array(vertsArray);
+                const verticesValues = new Float32Array(vertsArray);
 
                 // check if there are any faces of more than three vertices
                 if (faces_vertices.some(el => el.length > 3)) {
                     faces_vertices = polygonToTri(faces_vertices);
                 }
                 triangleGeometry.setIndex(faces_vertices.flat(Infinity));
-                triangleGeometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+                triangleGeometry.setAttribute("position", new THREE.BufferAttribute(verticesValues, 3));
 
                 let plane = new THREE.Mesh(triangleGeometry,
                     new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
@@ -531,36 +543,6 @@ function main() {
                 alert("A shape was missing necessary information to be rendered");
                 return null;
             }
-        }
-
-
-        function degToRad(degrees) {
-            return degrees * (Math.PI / 180);
-        }
-
-        /**
-         * Given an array of arrays representing points, pads 'points' that do not have three values
-         * with zeroes on the end, removes the last element of 'points' that have four elements. Does
-         * not handle 'points' with n < 2 or n > 4 elements. This is necessary because FOLD objects
-         * sometimes do not store the third value in the point, and assume it to be zero.
-         * @param {Array} pointList A list of Arrays, representing points in 3D space
-         * @returns {Array} The same list but with every point modified to be in 3D
-         */
-        function enforce3DCoordinates(pointList) {
-            let outArray = [];
-            for (let i = 0; i < pointList.length; i++) {
-                let point = pointList[i];
-                if (point.length === 2) {
-                    outArray = outArray.concat(point);
-                    outArray.push(0);
-                } else if (point.length === 4) {
-                    point.pop();
-                    outArray = outArray.concat(point);
-                } else {
-                    outArray = outArray.concat(point);
-                }
-            }
-            return outArray;
         }
 
         /**
@@ -618,6 +600,173 @@ function main() {
         }
     }
 
+    function setFoldObjGlobalReferences(foldObj) {
+        if (foldObj["file_frames"]) {
+            // assuming one frame is creases and other is 3D folded shape
+            let primaryStructureFound = foldObj["file_frames"].some(frame => {
+                return frame["frame_classes"].includes("foldedForm");
+            });
+
+            for (let i = 0; i < foldObj["file_frames"].length; i++) {
+                let frame = foldObj["file_frames"][i];
+
+                // these class names are specific to our implementation
+                if (frame["frame_classes"].includes("foldedForm")) { // only add shape if it's 3D
+                    let verts = frame["vertices_coords"];
+                    let faces = frame["faces_vertices"];
+                    let edges = frame["edges_vertices"];
+                    let faceEdges = frame["faces_edges"];
+                    // handle inheriting attributes if they don't exist in this frame
+                    if (!verts) {
+                        // ugly
+                        verts = foldObj["file_frames"][frame["frame_parent"]]["vertices_coords"];
+                    }
+                    if (!faces) {
+                        faces = foldObj["file_frames"][frame["frame_parent"]]["faces_vertices"];
+                    }
+                    if (!edges) {
+                        edges = foldObj["file_frames"][frame["frame_parent"]]["edges_vertices"];
+                    }
+                    if (!faceEdges) {
+                        faceEdges = foldObj["file_frames"][frame["frame_parent"]]["faces_edges"];
+                    }
+                    foldVerts = verts;
+                    foldEdges = edges;
+                    foldFaceVerts = faces;
+                    foldFaceEdges = faceEdges;
+
+                } else if (frame["frame_classes"].includes("creasePattern") && !primaryStructureFound) {
+                    foldVerts = frame["vertices_coords"];
+                    foldEdges = frame["edges_vertices"];
+                    foldFaceVerts = frame["faces_vertices"];
+                    foldFaceEdges = frame["faces_edges"];
+                }
+            }
+        } else {
+            foldVerts = foldObj["vertices_coords"];
+            foldEdges = foldObj["edges_vertices"];
+            foldFaceVerts = foldObj["faces_vertices"];
+            foldFaceEdges = foldObj["faces_edges"];
+        }
+    }
+
+    // create corresponding math lines in the 3D so we can match up when making new verts later
+    function createMath3DLines() {
+        mathLines3D.length = 0;
+        for (let i = 0; i < foldEdges.length; i++) {
+            let p1 = foldVerts[foldEdges[i][0]];
+            let p2 = foldVerts[foldEdges[i][1]];
+            let start = new THREE.Vector3(p1[0], p1[1], p1[2]);
+            let end = new THREE.Vector3(p2[0], p2[1], p2[2]);
+            mathLines3D.push(new THREE.Line3(start, end));
+        }
+    }
+
+    /**
+     * Handles changing the angles of selected edges, where the "angle" of an edge is the angle b/w
+     * the normals of the two faces sharing that edge
+     * @param {Number} angle the angle to change the edge to
+     * @param {Number} edgeIndex the index corresponding to mathLines to reference which edge it is
+     */
+    function changeEdgeAngle(angle, edgeIndex) {
+        // also change the angle in the 3D part here
+
+        // if a point is selected, prioritize folding that side
+        let selectedPrimaryVert;
+        if (selectedPoints.length > 0) {
+            selectedPrimaryVert = convertPointOnEdge2Dto3D(
+                mathVertices[selectedPoints[0]]
+            ).toArray();
+        }
+
+        // get all the faces that have this edge as an index
+        let facesWithSelectedEdge = [];
+        for (let i = 0; i < foldFaceEdges.length; i++) {
+            if (foldFaceEdges[i].includes(edgeIndex)) {
+                // we want the verts, the faces ordering should correspond to the same ones, right?
+                facesWithSelectedEdge.push(foldFaceVerts[i]);
+            }
+        }
+
+        // get the face that the selected point is on
+        let faceToRotateIndex = 0;
+        for (let i = 0; i < facesWithSelectedEdge.length; i++) {
+            for (let j = 0; j < facesWithSelectedEdge[i].length; j++) {
+                if (arraysEqual(foldVerts[facesWithSelectedEdge[i][j]], selectedPrimaryVert)) {
+                    faceToRotateIndex = i;
+                }
+            }
+        }
+
+        // get the vertices that don't include the selected edge
+        let faceToRotate = facesWithSelectedEdge[faceToRotateIndex];
+        let vertsIndicesToRotate = [];
+        for (let i = 0; i < faceToRotate.length; i++) {
+            if (!(foldEdges[edgeIndex].includes(faceToRotate[i]))) {
+                vertsIndicesToRotate.push(faceToRotate[i]);
+            }
+        }
+
+        let angleToRotate = angle - edges_angles[edgeIndex];
+        let start = arrayToVector3(foldVerts[foldEdges[edgeIndex][0]]);
+        let end = arrayToVector3(foldVerts[foldEdges[edgeIndex][1]]);
+        let rotationAxis = new THREE.Line3(start, end);
+        makeVertsRotation(foldVerts, vertsIndicesToRotate, rotationAxis, angleToRotate);
+
+        edges_angles[edgeIndex] = angle;
+
+    }
+
+    /**
+     * Handles actually rotating the vertices using THREE matrix math
+     * @param {Array} verts vertices_coords on the fold object
+     * @param {Array} rotateIndices indices of the verts to rotate
+     * @param {Line3} axisLine the axis to rotate the vertices around
+     * @param {Number} angle the angle to rotate the vertices by
+     */
+    function makeVertsRotation(verts, rotateIndices, axisLine, angle) {
+        let axis = new THREE.Vector3();
+        axisLine.delta(axis);
+        axis.normalize();
+
+        let rotationMatrix = new THREE.Matrix4();
+        angle = degToRad(angle);
+        rotationMatrix.makeRotationAxis(axis, angle);
+
+        let translationVector = new THREE.Vector3();
+        axisLine.getCenter(translationVector);
+
+        let translationMatrix = new THREE.Matrix4();
+        translationMatrix.makeTranslation(
+            -translationVector.x,
+            -translationVector.y,
+            -translationVector.z
+        );
+        let inverseTranslationMatrix = new THREE.Matrix4();
+        inverseTranslationMatrix.makeTranslation(
+            translationVector.x,
+            translationVector.y,
+            translationVector.z
+        );
+
+        for (let i = 0; i < rotateIndices.length; i++) {
+            let index = rotateIndices[i];
+
+            let vertVector = arrayToVector3(verts[index]);
+            vertVector.applyMatrix4(translationMatrix);
+            vertVector.applyMatrix4(rotationMatrix);
+            vertVector.applyMatrix4(inverseTranslationMatrix);
+
+            verts[index] = [
+                round(vertVector.x), round(vertVector.y), round(vertVector.z)
+            ]; // modify the fold object in place
+        }
+
+        // make a call to render everything again
+        render3D(foldObj, true);
+    }
+
+
     /**
      * Creates a new edge on the shape
      * @param {Vector3} v1 A THREE Vector3, the start of the line
@@ -639,6 +788,21 @@ function main() {
                 0,
                 1
             );
+
+            // also make a new edge in the fold object
+            let point1 = convertPointOnEdge2Dto3D(v1);
+            let point2 = convertPointOnEdge2Dto3D(v2);
+            point1 = stripLastZero([point1.x, point1.y, point1.z]);
+            point2 = stripLastZero([point2.x, point2.y, point2.z]);
+
+            // this also adds the necessary vertices, i think
+            FOLD.filter.addEdgeAndSubdivide(foldObj, point1, point2, 0.0001);
+            mathLines3D.push(new THREE.Line3(
+                (new THREE.Vector3()).fromArray(point1),
+                (new THREE.Vector3()).fromArray(point2)
+            ));
+
+
             // let intersections = [];
             for (let i = 0; i < mathLines.length; i++) {
                 /**
@@ -659,8 +823,21 @@ function main() {
                 );
                 if (intersection) {
                     createNewVert(new THREE.Vector3(intersection[0], intersection[1], 0));
+                    // fold doesn't check for intersections when adding the edge so we do it
+                    let interCoords = convertPointOnEdge2Dto3D(new THREE.Vector3(intersection[0], intersection[1], 0));
+                    interCoords = stripLastZero([interCoords.x, interCoords.y, interCoords.z]);
+
+                    FOLD.filter.addVertexAndSubdivide(foldObj, interCoords, 0.0001);
                 }
             }
+            // regenerate the faces
+            FOLD.convert.edges_vertices_to_vertices_vertices_sorted(foldObj);
+            FOLD.convert.vertices_vertices_to_faces_vertices(foldObj);
+            FOLD.convert.faces_vertices_to_faces_edges(foldObj);
+            setFoldObjGlobalReferences(foldObj);
+            // re-render the SVG here to enfore parity b/w the fold and the math lines and points
+            render2D(foldObj, true);
+            createMath3DLines();
         }
     }
 
@@ -683,21 +860,27 @@ function main() {
      * @param {Number} distance How far forward and backwards to check
      * @returns {Array} an array of all the points that the line intersected
      */
-    function lineAllCollisions(origin, vector, distance=2000) {
+    function lineAllCollisions(origin, vector, distance=4000) {
         vector.normalize();
+        console.log("vec", vector);
+        console.log("orig", origin);
         let lineStart = [origin.x - (vector.x * distance), origin.y - (vector.y * distance)];
         let lineEnd = [origin.x + (vector.x * distance), origin.y + (vector.y * distance)];
         let intersections = [];
 
+        console.log(mathLines);
+        console.log("segstart and end", lineStart, lineEnd);
         for (let i = 0; i < mathLines.length; i++) {
             let interSectPt = FOLD.geom.segmentIntersectSegment([lineStart, lineEnd], [
                 [mathLines[i].start.x, mathLines[i].start.y],
                 [mathLines[i].end.x, mathLines[i].end.y]
-            ])
+            ]);
+            console.log(interSectPt);
             if (interSectPt) {
                 intersections.push([round(interSectPt[0]), round(interSectPt[1])]);
             }
         }
+        console.log("intersections", intersections);
         return intersections;
     }
 
@@ -706,26 +889,57 @@ function main() {
      */
     function findLineLimits(origin, direction) {
         let intersections = lineAllCollisions(origin, direction);
-        let mindex = 0;
-        let maxdex = 0;
+        let indexMaxX = 0;
+        let indexMaxY = 0;
+        let indexMinX = 0;
+        let indexMinY = 0;
+
+        // scuffed way of checking this, i can't think of a better way w/o adding an edges array
         for (let i = 0; i < intersections.length; i++) {
-            if (intersections[i][0] < intersections[mindex][0]) {
-                mindex = i;
-            } else if (intersections[i][1] < intersections[mindex][1]) {
-                mindex = i;
+            if (intersections[i][0] > intersections[indexMaxX][0]) {
+                indexMaxX = i;
             }
-            if (intersections[i][0] > intersections[maxdex][0]) {
-                maxdex = i;
-            } else if (intersections[i][1] > intersections[maxdex][1]) {
-                maxdex = i;
+            if (intersections[i][1] > intersections[indexMaxY][1]) {
+                indexMaxY = i;
+            }
+            if (intersections[i][0] < intersections[indexMinX][0]) {
+                indexMinX = i;
+            }
+            if (intersections[i][1] < intersections[indexMinY][1]) {
+                indexMinY = i;
             }
         }
+        if (arraysEqual(intersections[indexMaxX], intersections[indexMaxY])) {
+            return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
+                new THREE.Vector3(intersections[indexMinX][0], intersections[indexMinX][1], 0)]
+        } else {
+            return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
+                new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0)];
+        }
+    }
 
-        return [new THREE.Vector3(intersections[mindex][0], intersections[mindex][1], 0),
-        new THREE.Vector3(intersections[maxdex][0], intersections[maxdex][1], 0)];
+    /**
+     * This unfortunately assumes that when constructed, the mathLines and mathLines3D have all the
+     * same corresponding lines in the same places, and will break horribly if this is not the case
+     * @param {Vector3} point a point on an edge in the SVG to be converted to the location in 3D
+     * @returns {Vector3} a Vector3 that the corresponding 3D point has been copied into
+     */
+    function convertPointOnEdge2Dto3D(point) {
+        for (let i = 0; i < mathLines.length; i++) {
+            let closestPointOnLine = new THREE.Vector3();
+            mathLines[i].closestPointToPoint(point, true, closestPointOnLine)
+            if (closestPointOnLine.equals(point)) {
+                let returnPoint = new THREE.Vector3();
+                mathLines3D[i].at(
+                    mathLines[i].closestPointToPointParameter(point, true), returnPoint
+                );
+                return returnPoint;
+            }
+        }
     }
 
 
+    // which combinations of selected points and lines correspond to which axioms
     const huzitaOptions = [
         {p:2, l:0},
         {p:2, l:0},
@@ -751,6 +965,13 @@ function main() {
                 buttons[i].disabled = true;
             }
         }
+        let line1Range = document.getElementById("line1");
+        if (selectedLines.length === 1) {
+            line1Range.value = edges_angles[selectedLines[0]];
+            line1Range.classList.remove("hidden");
+        } else {
+            line1Range.classList.add("hidden");
+        }
     }
 
     /**
@@ -772,34 +993,50 @@ function main() {
         lineBetween.getCenter(origin);
         bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
 
+        console.log("orig points data", origin, bisector);
         let newVerts = findLineLimits(origin, bisector);
 
         createNewEdge(newVerts[0], newVerts[1]);
+        console.log("reached end of axiom2");
     }
 
     // find bisector for the two lines, then intersection point, take this as the crease
     function foldAxiom3(l1, l2) {
         // find the direction of the bisecting line
         let bisector = new THREE.Vector3();
+
         let dir1 = new THREE.Vector3();
         l1.delta(dir1);
         let dir2 = new THREE.Vector3();
         l2.delta(dir2);
 
+        // console.log(dir1, dir2);
         // we need the two vectors to be pointing in the same direction
-        if (dir1.dot(dir2) < 0) {
+        let dotProduct = dir1.dot(dir2);
+
+        // this is a hack fix and only works on the edges
+        let edgeCase1 = l1.end.equals(l2.start);
+        let edgeCase2 = l2.end.equals(l1.start);
+
+        if (dotProduct < 0) {
             dir1.multiplyScalar(-1);
+        } else if (dotProduct === 0) {
+            if (edgeCase1) {
+                dir2.multiplyScalar(-1);
+            } else if (edgeCase2) {
+                dir1.multiplyScalar(-1);
+            }
         }
-        bisector.addVectors(dir1.normalize(), dir2.normalize());
+        bisector.addVectors(dir1.normalize(), dir2.normalize()).normalize();
 
         // find the origin point where the lines intersect
         let origin = FOLD.geom.segmentIntersectSegment([
-                [l1.start.x - (dir1 * 1000), l1.start.y - (dir1 * 1000)],
-                [l1.end.x + (dir1 * 1000), l1.end.y + (dir1 * 1000)]
+                [l1.start.x - (dir1.x * 1000), l1.start.y - (dir1.y * 1000)],
+                [l1.end.x + (dir1.x * 1000), l1.end.y + (dir1.y * 1000)]
             ],
             [
-                [l2.start.x - (dir2 * 1000), l2.start.y - (dir2 * 1000)],
-                [l2.end.x + (dir2 * 1000), l2.end.y + (dir2 * 1000)]
+                [l2.start.x - (dir2.x * 1000), l2.start.y - (dir2.y * 1000)],
+                [l2.end.x + (dir2.x * 1000), l2.end.y + (dir2.y * 1000)]
             ]
         );
         let newVerts;
@@ -807,9 +1044,13 @@ function main() {
             // scuffed way to get a point inbetween the two selected lines if parallel
             origin = new THREE.Vector3();
             (new THREE.Line3(l1.start, l2.start)).getCenter(origin);
+        } else {
+            origin = (new THREE.Vector3()).fromArray(origin);
         }
+        console.log(origin, bisector);
         newVerts = findLineLimits(origin, bisector);
         console.log(newVerts);
+
         createNewEdge(newVerts[0], newVerts[1]);
 
     }
@@ -836,7 +1077,6 @@ function main() {
     function foldAxiom7(p1, l1, l2) {
         let lineTwoDir = new THREE.Vector3();
         l2.delta(lineTwoDir);
-        console.log(p1, l1, l2);
         let pointOnLine = FOLD.geom.segmentIntersectSegment(
             [
                 [p1.x - (lineTwoDir.x * 2000), p1.y - (lineTwoDir.y * 2000)],
@@ -847,7 +1087,6 @@ function main() {
                 [l1.end.x, l1.end.y]
             ]
         );
-        console.log(pointOnLine);
         foldAxiom2(p1, new THREE.Vector3(pointOnLine[0], pointOnLine[1], 0));
     }
 
@@ -856,7 +1095,82 @@ function main() {
         let roundDown = (num - Math.floor(num)) < eps;
         if (roundUp || roundDown) {
             return Math.round(num);
+        } else {
+            return num;
         }
+    }
+
+    /**
+     * Takes the last value off of an array if it is zero
+     * @param {Array} array Any array of integer values
+     * @returns A new array with the last value taken out if it was zero
+     */
+    function stripLastZero(array) {
+        let newArr = [];
+        for (let i = 0; i < array.length - 1; i++) {
+            newArr.push(array[i]);
+        }
+        let last = array.pop();
+        if (last) {
+            newArr.push(last);
+        }
+        return newArr;
+    }
+
+    // from https://stackoverflow.com/a/16436975
+    function arraysEqual(a, b) {
+        if (a == null || b == null || a == undefined || b == undefined) return false;
+        if (a === b) return true;
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
+    /**
+     * TODO: useless helper now, go back and replace w/ THREE lib function
+     * maybe not useless? fromArray doesn't seem to work with arrays of 2 values
+     * @param {Array} array An array of number values
+     */
+    function arrayToVector3(array) {
+        let outVector = new THREE.Vector3();
+        let x = array[0];
+        let y = array[1];
+        let z = array[2];
+        if (x) outVector.x = x;
+        if (y) outVector.y = y;
+        if (z) outVector.z = z;
+        return outVector;
+    }
+
+    function degToRad(degrees) {
+        return degrees * (Math.PI / 180);
+    }
+
+    /**
+     * Given an array of arrays representing points, pads 'points' that do not have three values
+     * with zeroes on the end, removes the last element of 'points' that have four elements. Does
+     * not handle 'points' with n < 2 or n > 4 elements. This is necessary because FOLD objects
+     * sometimes do not store the third value in the point, and assume it to be zero.
+     * @param {Array} pointList A list of Arrays, representing points in 3D space
+     * @returns {Array} The same list but with every point modified to be in 3D
+     */
+    function enforce3DCoordinates(pointList) {
+        let outArray = [];
+        for (let i = 0; i < pointList.length; i++) {
+            let point = pointList[i];
+            if (point.length === 2) {
+                outArray = outArray.concat(point);
+                outArray.push(0);
+            } else if (point.length === 4) {
+                outArray = outArray.concat(point);
+                outArray.pop();
+            } else {
+                outArray = outArray.concat(point);
+            }
+        }
+        return outArray;
     }
 }
 
