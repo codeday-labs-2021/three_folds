@@ -292,7 +292,7 @@ function main() {
 
         /**
          * Handles selecting a line and draws a corresponding line selection onto the SVG view
-         * @param {Line3} line a THREE Line3 object that represents the line being selected
+         * @param {Number} index the index of the line being selected, corresponding to mathLines
          */
         function selectLine(index) {
             if (selectedLines.includes(index)) {
@@ -388,9 +388,9 @@ function main() {
         if (!reRender) {
             initRenderer();
             init3DListeners();
+            animate();
         }
         loadShapes();
-        animate();
 
         // init THREE.js rendering stuff
         function initRenderer() {
@@ -684,7 +684,7 @@ function main() {
             }
         }
 
-        // get the vertices that don't include the selected edge
+        // get the face that the selected point is on
         let faceToRotateIndex = 0;
         for (let i = 0; i < facesWithSelectedEdge.length; i++) {
             for (let j = 0; j < facesWithSelectedEdge[i].length; j++) {
@@ -694,8 +694,10 @@ function main() {
             }
         }
 
+        // get the vertices that don't include the selected edge
         let faceToRotate = facesWithSelectedEdge[faceToRotateIndex];
         let vertsIndicesToRotate = [];
+        console.log(faceToRotate);
         for (let i = 0; i < faceToRotate.length; i++) {
             if (!(foldEdges[edgeIndex].includes(faceToRotate[i]))) {
                 vertsIndicesToRotate.push(faceToRotate[i]);
@@ -744,17 +746,20 @@ function main() {
             translationVector.z
         );
 
-
         for (let i = 0; i < rotateIndices.length; i++) {
             let index = rotateIndices[i];
 
             let vertVector = arrayToVector3(verts[index]);
+            console.log(vertVector);
             vertVector.applyMatrix4(translationMatrix);
             vertVector.applyMatrix4(rotationMatrix);
             vertVector.applyMatrix4(inverseTranslationMatrix);
 
-            verts[index] = vertVector.toArray(); // modify the fold object in place
+            verts[index] = [
+                round(vertVector.x), round(vertVector.y), round(vertVector.z)
+            ]; // modify the fold object in place
         }
+        console.log(foldObj);
 
         // make a call to render everything again
         render3D(foldObj, true);
