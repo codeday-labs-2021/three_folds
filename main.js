@@ -834,6 +834,8 @@ function main() {
             FOLD.convert.vertices_vertices_to_faces_vertices(foldObj);
             FOLD.convert.faces_vertices_to_faces_edges(foldObj);
             setFoldObjGlobalReferences(foldObj);
+            // re-render the SVG here to enfore parity b/w the fold and the math lines and points
+            render2D(foldObj);
         }
     }
 
