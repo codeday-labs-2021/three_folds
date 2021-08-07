@@ -20,14 +20,14 @@ function main() {
         reRender = true;
     });
 
-    document.getElementById("line1").addEventListener("change", function() {
-        changeEdgeAngle(this.value, selectedLines[0]);
-    });
-
-    // !!IMPORTANT --> UNCOMMENT THIS AND DELETE OTHER PART ONLY WHEN OPTIMIZED
-    // document.getElementById("line1").addEventListener("input", function() {
+    // document.getElementById("line1").addEventListener("change", function() {
     //     changeEdgeAngle(this.value, selectedLines[0]);
     // });
+
+    // !!IMPORTANT --> UNCOMMENT THIS AND DELETE OTHER PART ONLY WHEN OPTIMIZED
+    document.getElementById("line1").addEventListener("input", function() {
+        changeEdgeAngle(this.value, selectedLines[0]);
+    });
 
     let foldObj;
 
@@ -361,6 +361,7 @@ function main() {
 
     let canvas, scene, camera, renderer;
     const mathLines3D = [];
+    const disposables = [];
 
     let rotationRadius = 5;
 
@@ -393,6 +394,10 @@ function main() {
             initRenderer();
             init3DListeners();
             animate();
+        } else {
+            while (disposables.length > 0) {
+                disposables.pop().dispose();
+            }
         }
         loadShapes();
 
@@ -424,15 +429,17 @@ function main() {
             setFoldObjGlobalReferences(foldObj);
 
             let createdGeom = createFaceGeom(foldVerts, foldFaceVerts);
-            if (createdGeom) shapes.push(createdGeom);
+            if (createdGeom) {
+                shapes.push(createdGeom)
+            };
 
             shapes.forEach(shape => {
                 scene.add(shape);
                 const edgeGeom = new THREE.EdgesGeometry(shape.geometry);
-                const lineSegments = new THREE.LineSegments(edgeGeom, new THREE.LineBasicMaterial({
-                    color: 0xffffff,
-                }));
+                const lineMaterial = new THREE.LineBasicMaterial({color: 0xffffff});
+                const lineSegments = new THREE.LineSegments(edgeGeom, lineMaterial);
                 scene.add(lineSegments);
+                disposables.push(edgeGeom, lineMaterial);
             })
 
             // default to using the first shape as the center as there is no way to calc it w/ >1 shapes
@@ -442,7 +449,7 @@ function main() {
         }
 
         // stop loading repeat listeners, what do i do with the leftover 'lost' listeners?
-        function init3DListeners(reRender) {
+        function init3DListeners() {
             // some listeners require access to the objects in this instance of the function
 
             // prevent right clicks from opening the context menu anywhere
@@ -534,10 +541,15 @@ function main() {
                     faces_vertices = polygonToTri(faces_vertices);
                 }
                 triangleGeometry.setIndex(faces_vertices.flat(Infinity));
-                triangleGeometry.setAttribute("position", new THREE.BufferAttribute(verticesValues, 3));
+                triangleGeometry.setAttribute("position",
+                    new THREE.BufferAttribute(verticesValues, 3)
+                );
 
-                let plane = new THREE.Mesh(triangleGeometry,
-                    new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide}));
+                const material = new THREE.MeshBasicMaterial({color: 0x885556, side: THREE.DoubleSide});
+                let plane = new THREE.Mesh(triangleGeometry, material);
+
+                disposables.push(triangleGeometry, material);
+
                 return plane;
             } else {
                 alert("A shape was missing necessary information to be rendered");
@@ -909,13 +921,22 @@ function main() {
                 indexMinY = i;
             }
         }
+
+        // the only way I know to get all cases, when more bugs come up this if chain gets longer...
+        if (intersections[indexMaxX][0] === intersections[indexMaxY][0]) {
+            return [new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0),
+            new THREE.Vector3(intersections[indexMinY][0], intersections[indexMinY][1], 0)];
+        }
+        if (intersections[indexMaxX][1] === intersections[indexMaxY][1]) {
+            return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
+            new THREE.Vector3(intersections[indexMinX][0], intersections[indexMinX][1], 0)];
+        }
         if (arraysEqual(intersections[indexMaxX], intersections[indexMaxY])) {
             return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
-                new THREE.Vector3(intersections[indexMinX][0], intersections[indexMinX][1], 0)]
-        } else {
-            return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
-                new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0)];
+                new THREE.Vector3(intersections[indexMinX][0], intersections[indexMinX][1], 0)];
         }
+        return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
+            new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0)];
     }
 
     /**
