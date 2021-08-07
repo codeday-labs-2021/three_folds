@@ -883,25 +883,19 @@ function main() {
      */
     function lineAllCollisions(origin, vector, distance=4000) {
         vector.normalize();
-        console.log("vec", vector);
-        console.log("orig", origin);
         let lineStart = [origin.x - (vector.x * distance), origin.y - (vector.y * distance)];
         let lineEnd = [origin.x + (vector.x * distance), origin.y + (vector.y * distance)];
         let intersections = [];
 
-        console.log(mathLines);
-        console.log("segstart and end", lineStart, lineEnd);
         for (let i = 0; i < mathLines.length; i++) {
             let interSectPt = FOLD.geom.segmentIntersectSegment([lineStart, lineEnd], [
                 [mathLines[i].start.x, mathLines[i].start.y],
                 [mathLines[i].end.x, mathLines[i].end.y]
             ]);
-            console.log(interSectPt);
             if (interSectPt) {
                 intersections.push([round(interSectPt[0]), round(interSectPt[1])]);
             }
         }
-        console.log("intersections", intersections);
         return intersections;
     }
 
@@ -1023,11 +1017,9 @@ function main() {
         lineBetween.getCenter(origin);
         bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
 
-        console.log("orig points data", origin, bisector);
         let newVerts = findLineLimits(origin, bisector);
 
         createNewEdge(newVerts[0], newVerts[1]);
-        console.log("reached end of axiom2");
     }
 
     // find bisector for the two lines, then intersection point, take this as the crease
@@ -1040,7 +1032,6 @@ function main() {
         let dir2 = new THREE.Vector3();
         l2.delta(dir2);
 
-        // console.log(dir1, dir2);
         // we need the two vectors to be pointing in the same direction
         let dotProduct = dir1.dot(dir2);
 
@@ -1077,9 +1068,7 @@ function main() {
         } else {
             origin = (new THREE.Vector3()).fromArray(origin);
         }
-        console.log(origin, bisector);
         newVerts = findLineLimits(origin, bisector);
-        console.log(newVerts);
 
         createNewEdge(newVerts[0], newVerts[1]);
 
