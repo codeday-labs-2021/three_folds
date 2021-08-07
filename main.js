@@ -1044,9 +1044,10 @@ function main() {
             // scuffed way to get a point inbetween the two selected lines if parallel
             origin = new THREE.Vector3();
             (new THREE.Line3(l1.start, l2.start)).getCenter(origin);
+        } else {
+            origin = (new THREE.Vector3()).fromArray(origin);
         }
         console.log(origin, bisector);
-        origin = (new THREE.Vector3()).fromArray(origin);
         newVerts = findLineLimits(origin, bisector);
         console.log(newVerts);
 
