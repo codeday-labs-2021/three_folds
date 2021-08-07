@@ -697,7 +697,6 @@ function main() {
         // get the vertices that don't include the selected edge
         let faceToRotate = facesWithSelectedEdge[faceToRotateIndex];
         let vertsIndicesToRotate = [];
-        console.log(faceToRotate);
         for (let i = 0; i < faceToRotate.length; i++) {
             if (!(foldEdges[edgeIndex].includes(faceToRotate[i]))) {
                 vertsIndicesToRotate.push(faceToRotate[i]);
@@ -750,7 +749,6 @@ function main() {
             let index = rotateIndices[i];
 
             let vertVector = arrayToVector3(verts[index]);
-            console.log(vertVector);
             vertVector.applyMatrix4(translationMatrix);
             vertVector.applyMatrix4(rotationMatrix);
             vertVector.applyMatrix4(inverseTranslationMatrix);
@@ -759,7 +757,6 @@ function main() {
                 round(vertVector.x), round(vertVector.y), round(vertVector.z)
             ]; // modify the fold object in place
         }
-        console.log(foldObj);
 
         // make a call to render everything again
         render3D(foldObj, true);
@@ -858,21 +855,27 @@ function main() {
      * @param {Number} distance How far forward and backwards to check
      * @returns {Array} an array of all the points that the line intersected
      */
-    function lineAllCollisions(origin, vector, distance=2000) {
+    function lineAllCollisions(origin, vector, distance=4000) {
         vector.normalize();
+        console.log("vec", vector);
+        console.log("orig", origin);
         let lineStart = [origin.x - (vector.x * distance), origin.y - (vector.y * distance)];
         let lineEnd = [origin.x + (vector.x * distance), origin.y + (vector.y * distance)];
         let intersections = [];
 
+        console.log(mathLines);
+        console.log("segstart and end", lineStart, lineEnd);
         for (let i = 0; i < mathLines.length; i++) {
             let interSectPt = FOLD.geom.segmentIntersectSegment([lineStart, lineEnd], [
                 [mathLines[i].start.x, mathLines[i].start.y],
                 [mathLines[i].end.x, mathLines[i].end.y]
-            ])
+            ]);
+            console.log(interSectPt);
             if (interSectPt) {
                 intersections.push([round(interSectPt[0]), round(interSectPt[1])]);
             }
         }
+        console.log("intersections", intersections);
         return intersections;
     }
 
@@ -886,7 +889,7 @@ function main() {
         let indexMinX = 0;
         let indexMinY = 0;
 
-        // scuffed way of checking this,  i can't think of a better way w/o adding an edges array
+        // scuffed way of checking this, i can't think of a better way w/o adding an edges array
         for (let i = 0; i < intersections.length; i++) {
             if (intersections[i][0] > intersections[indexMaxX][0]) {
                 indexMaxX = i;
@@ -994,25 +997,39 @@ function main() {
     function foldAxiom3(l1, l2) {
         // find the direction of the bisecting line
         let bisector = new THREE.Vector3();
+
         let dir1 = new THREE.Vector3();
         l1.delta(dir1);
         let dir2 = new THREE.Vector3();
         l2.delta(dir2);
 
+        // console.log(dir1, dir2);
         // we need the two vectors to be pointing in the same direction
-        if (dir1.dot(dir2) < 0) {
+        let dotProduct = dir1.dot(dir2);
+
+        // this is a hack fix and only works on the edges
+        let edgeCase1 = l1.end.equals(l2.start);
+        let edgeCase2 = l2.end.equals(l1.start);
+
+        if (dotProduct < 0) {
             dir1.multiplyScalar(-1);
+        } else if (dotProduct === 0) {
+            if (edgeCase1) {
+                dir2.multiplyScalar(-1);
+            } else if (edgeCase2) {
+                dir1.multiplyScalar(-1);
+            }
         }
         bisector.addVectors(dir1.normalize(), dir2.normalize()).normalize();
 
         // find the origin point where the lines intersect
         let origin = FOLD.geom.segmentIntersectSegment([
-                [l1.start.x - (dir1 * 1000), l1.start.y - (dir1 * 1000)],
-                [l1.end.x + (dir1 * 1000), l1.end.y + (dir1 * 1000)]
+                [l1.start.x - (dir1.x * 1000), l1.start.y - (dir1.y * 1000)],
+                [l1.end.x + (dir1.x * 1000), l1.end.y + (dir1.y * 1000)]
             ],
             [
-                [l2.start.x - (dir2 * 1000), l2.start.y - (dir2 * 1000)],
-                [l2.end.x + (dir2 * 1000), l2.end.y + (dir2 * 1000)]
+                [l2.start.x - (dir2.x * 1000), l2.start.y - (dir2.y * 1000)],
+                [l2.end.x + (dir2.x * 1000), l2.end.y + (dir2.y * 1000)]
             ]
         );
         let newVerts;
@@ -1021,7 +1038,11 @@ function main() {
             origin = new THREE.Vector3();
             (new THREE.Line3(l1.start, l2.start)).getCenter(origin);
         }
+        console.log(origin, bisector);
+        origin = (new THREE.Vector3()).fromArray(origin);
         newVerts = findLineLimits(origin, bisector);
+        console.log(newVerts);
+
         createNewEdge(newVerts[0], newVerts[1]);
 
     }
@@ -1090,8 +1111,8 @@ function main() {
 
     // from https://stackoverflow.com/a/16436975
     function arraysEqual(a, b) {
+        if (a == null || b == null || a == undefined || b == undefined) return false;
         if (a === b) return true;
-        if (a == null || b == null) return false;
         if (a.length !== b.length) return false;
         for (let i = 0; i < a.length; i++) {
             if (a[i] !== b[i]) return false;
