@@ -37,7 +37,7 @@ function main() {
         fReader.addEventListener("load", () => {
             let text = fReader.result;
             foldObj = JSON.parse(text);
-            render2D(foldObj);
+            render2D(foldObj, reRender);
             render3D(foldObj, reRender);
         });
         fReader.readAsText(file);
@@ -64,7 +64,7 @@ function main() {
     let xScale, yScale;
 
     // SVG render and calculating the scaling from FOLD to the SVG
-    function render2D(foldObj) {
+    function render2D(foldObj, reRender) {
 
         creaseFrameExists = false;
 
@@ -79,7 +79,9 @@ function main() {
 
         drawVertLine();
         initSVGListeners();
-        initButtonListeners();
+        if (!reRender) {
+            initButtonListeners();
+        }
 
         function drawVertLine(){
             svg.innerHTML = "";
@@ -94,9 +96,11 @@ function main() {
                 }
             }
             // quick fix for fold library method not working properly w/ diagonal-unfolded.fold
-            if (foldObj["frame_classes"][0] === "creasePattern") {
-                creaseFrameExists = true;
-                frame = foldObj;
+            if (foldObj["frame_classes"]) {
+                if (foldObj["frame_classes"][0] === "creasePattern") {
+                    creaseFrameExists = true;
+                    frame = foldObj;
+                }
             }
 
             // not gonna handle inheritance, just expect creasePattern to have all info
@@ -541,18 +545,6 @@ function main() {
             }
         }
 
-        // create corresponding math lines in the 3D so we can match up when making new verts later
-        function createMath3DLines() {
-            mathLines3D.length = 0;
-            for (let i = 0; i < foldEdges.length; i++) {
-                let p1 = foldVerts[foldEdges[i][0]];
-                let p2 = foldVerts[foldEdges[i][1]];
-                let start = new THREE.Vector3(p1[0], p1[1], p1[2]);
-                let end = new THREE.Vector3(p2[0], p2[1], p2[2]);
-                mathLines3D.push(new THREE.Line3(start, end));
-            }
-        }
-
         /**
          * Function to split an array of indexed vertices as faces into triangles if they aren't already
          * @param {Array} array A list of faces made by referencing indexed vertices
@@ -655,6 +647,18 @@ function main() {
             foldEdges = foldObj["edges_vertices"];
             foldFaceVerts = foldObj["faces_vertices"];
             foldFaceEdges = foldObj["faces_edges"];
+        }
+    }
+
+    // create corresponding math lines in the 3D so we can match up when making new verts later
+    function createMath3DLines() {
+        mathLines3D.length = 0;
+        for (let i = 0; i < foldEdges.length; i++) {
+            let p1 = foldVerts[foldEdges[i][0]];
+            let p2 = foldVerts[foldEdges[i][1]];
+            let start = new THREE.Vector3(p1[0], p1[1], p1[2]);
+            let end = new THREE.Vector3(p2[0], p2[1], p2[2]);
+            mathLines3D.push(new THREE.Line3(start, end));
         }
     }
 
@@ -832,7 +836,8 @@ function main() {
             FOLD.convert.faces_vertices_to_faces_edges(foldObj);
             setFoldObjGlobalReferences(foldObj);
             // re-render the SVG here to enfore parity b/w the fold and the math lines and points
-            render2D(foldObj);
+            render2D(foldObj, true);
+            createMath3DLines();
         }
     }
 
@@ -988,9 +993,11 @@ function main() {
         lineBetween.getCenter(origin);
         bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
 
+        console.log("orig points data", origin, bisector);
         let newVerts = findLineLimits(origin, bisector);
 
         createNewEdge(newVerts[0], newVerts[1]);
+        console.log("reached end of axiom2");
     }
 
     // find bisector for the two lines, then intersection point, take this as the crease
