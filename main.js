@@ -1164,8 +1164,8 @@ function main() {
                 outArray = outArray.concat(point);
                 outArray.push(0);
             } else if (point.length === 4) {
-                point.pop();
                 outArray = outArray.concat(point);
+                outArray.pop();
             } else {
                 outArray = outArray.concat(point);
             }
