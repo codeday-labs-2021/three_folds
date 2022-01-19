@@ -78,9 +78,9 @@ function main() {
         selectedSVGLines.length = 0;
 
         drawVertLine();
-        initSVGListeners();
         if (!reRender) {
             initButtonListeners();
+            initSVGListeners();
         }
 
         function drawVertLine(){
@@ -202,23 +202,32 @@ function main() {
 
         function initButtonListeners() {
             document.getElementById("huzita1").addEventListener("click", () => {
-                foldAxiom1(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]])});
+                foldAxiom1(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]]);
+            });
 
             document.getElementById("huzita2").addEventListener("click", () => {
-                foldAxiom2(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]])});
+                foldAxiom2(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]]);
+            });
 
             document.getElementById("huzita3").addEventListener("click", () => {
-                foldAxiom3(mathLines[selectedLines[0]], mathLines[selectedLines[1]])});
+                foldAxiom3(mathLines[selectedLines[0]], mathLines[selectedLines[1]]);
+            });
 
             document.getElementById("huzita4").addEventListener("click", () => {
-                foldAxiom4(mathVertices[selectedPoints[0]], mathLines[selectedLines[0]])});
+                foldAxiom4(mathVertices[selectedPoints[0]], mathLines[selectedLines[0]]);
+            });
 
-            document.getElementById("huzita5").addEventListener("click", foldAxiom5);
+            document.getElementById("huzita5").addEventListener("click", () => {
+                foldAxiom5(mathVertices[selectedPoints[0]], mathVertices[selectedPoints[1]],
+                    mathLines[selectedLines[0]]);
+            });
+
             document.getElementById("huzita6").addEventListener("click", foldAxiom6);
 
             document.getElementById("huzita7").addEventListener("click", () => {
                 foldAxiom7(mathVertices[selectedPoints[0]],
-                mathLines[selectedLines[0]], mathLines[selectedLines[1]])});
+                    mathLines[selectedLines[0]], mathLines[selectedLines[1]]);
+            });
         }
 
         /**
@@ -874,25 +883,19 @@ function main() {
      */
     function lineAllCollisions(origin, vector, distance=4000) {
         vector.normalize();
-        console.log("vec", vector);
-        console.log("orig", origin);
         let lineStart = [origin.x - (vector.x * distance), origin.y - (vector.y * distance)];
         let lineEnd = [origin.x + (vector.x * distance), origin.y + (vector.y * distance)];
         let intersections = [];
 
-        console.log(mathLines);
-        console.log("segstart and end", lineStart, lineEnd);
         for (let i = 0; i < mathLines.length; i++) {
             let interSectPt = FOLD.geom.segmentIntersectSegment([lineStart, lineEnd], [
                 [mathLines[i].start.x, mathLines[i].start.y],
                 [mathLines[i].end.x, mathLines[i].end.y]
             ]);
-            console.log(interSectPt);
             if (interSectPt) {
                 intersections.push([round(interSectPt[0]), round(interSectPt[1])]);
             }
         }
-        console.log("intersections", intersections);
         return intersections;
     }
 
@@ -923,13 +926,13 @@ function main() {
         }
 
         // the only way I know to get all cases, when more bugs come up this if chain gets longer...
-        if (intersections[indexMaxX][0] === intersections[indexMaxY][0]) {
+        if (intersections[indexMaxX][0] === intersections[indexMaxY][0] && !(arraysEqual(intersections[indexMaxX], intersections[indexMaxY]))) {
             return [new THREE.Vector3(intersections[indexMaxY][0], intersections[indexMaxY][1], 0),
-            new THREE.Vector3(intersections[indexMinY][0], intersections[indexMinY][1], 0)];
+                new THREE.Vector3(intersections[indexMinY][0], intersections[indexMinY][1], 0)];
         }
         if (intersections[indexMaxX][1] === intersections[indexMaxY][1]) {
             return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
-            new THREE.Vector3(intersections[indexMinX][0], intersections[indexMinX][1], 0)];
+                new THREE.Vector3(intersections[indexMinX][0], intersections[indexMinX][1], 0)];
         }
         if (arraysEqual(intersections[indexMaxX], intersections[indexMaxY])) {
             return [new THREE.Vector3(intersections[indexMaxX][0], intersections[indexMaxX][1], 0),
@@ -1014,11 +1017,9 @@ function main() {
         lineBetween.getCenter(origin);
         bisector.crossVectors(pointDirection, new THREE.Vector3(0, 0, 1));
 
-        console.log("orig points data", origin, bisector);
         let newVerts = findLineLimits(origin, bisector);
 
         createNewEdge(newVerts[0], newVerts[1]);
-        console.log("reached end of axiom2");
     }
 
     // find bisector for the two lines, then intersection point, take this as the crease
@@ -1031,7 +1032,6 @@ function main() {
         let dir2 = new THREE.Vector3();
         l2.delta(dir2);
 
-        // console.log(dir1, dir2);
         // we need the two vectors to be pointing in the same direction
         let dotProduct = dir1.dot(dir2);
 
@@ -1068,9 +1068,7 @@ function main() {
         } else {
             origin = (new THREE.Vector3()).fromArray(origin);
         }
-        console.log(origin, bisector);
         newVerts = findLineLimits(origin, bisector);
-        console.log(newVerts);
 
         createNewEdge(newVerts[0], newVerts[1]);
 
@@ -1087,8 +1085,18 @@ function main() {
         createNewEdge(newVerts[0], newVerts[1]);
     }
 
-    function foldAxiom5() {
-        console.warn("Axiom 5 not implemented");
+    function foldAxiom5(p1, p2, l1) {
+        let radius = p1.distanceTo(p2);
+        let intersections = segmentIntersectCircle(l1, p2, radius);
+        if (intersections.length !== 0) {
+            let intersectionPt = arrayToVector3(intersections[0]);
+            let lineAcross = new THREE.Line3(p1, intersectionPt);
+            let dir = new THREE.Vector3();
+            lineAcross.delta(dir);
+            dir.crossVectors(new THREE.Vector3(0, 0, 1), dir);
+            let newVerts = findLineLimits(p2, dir);
+            createNewEdge(newVerts[0], newVerts[1]);
+        }
     }
 
     function foldAxiom6() {
@@ -1119,6 +1127,41 @@ function main() {
         } else {
             return num;
         }
+    }
+
+    /**
+     * find the the intersection(s) of a line segment and a circle, used in axiom 5, from the above
+     * page on the axioms
+     * @param {Line3} line a THREE Line3 representing a line segment
+     * @param {Vector3} center a THREE Vector3 representing the center of the circle
+     * @param {Number} r the length of the radius of the circle
+     * @returns {Array} an array containing points of the intersections
+     */
+    function segmentIntersectCircle(line, center, r) {
+        let outPoints = [];
+        let closestPoint = new THREE.Vector3();
+        line.closestPointToPoint(center, true, closestPoint);
+        let cDist = center.distanceTo(closestPoint);
+        if (cDist <= r) {
+            let x1 = line.start.x;
+            let x2 = line.end.x;
+            let y1 = line.start.y;
+            let y2 = line.end.y;
+            let xc = center.x;
+            let yc = center.y;
+
+            let a = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+            let b = 2 * (x2 - x1) * (x1 - xc) + 2 * (y2 - y1) * (y1 - yc)
+            let c = (xc ** 2) + (yc ** 2) + (x1 ** 2) + (y1 ** 2) - (2 * ((xc * x1) + (yc * y1))) - r ** 2;
+            let discriminant = Math.sqrt((b ** 2) - (4 * a * c));
+            let s1 = (-b + discriminant) / (2 * a);
+            let s2 = (-b - discriminant) / (2 * a);
+            outPoints.push(FOLD.geom.linearInterpolate(s1, [line.start.x, line.start.y], [line.end.x, line.end.y]));
+            if (discriminant !== 0) {
+                outPoints.push(FOLD.geom.linearInterpolate(s2, [line.start.x, line.start.y], [line.end.x, line.end.y]));
+            }
+        }
+        return outPoints;
     }
 
     /**
